@@ -61,6 +61,7 @@ export interface IdentifyResponse {
   points: number;
   streak: number;
   funFact?: string;
+  imageKey?: string;
   error?: string;
 }
 
