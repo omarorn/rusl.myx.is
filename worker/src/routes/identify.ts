@@ -119,6 +119,49 @@ async function logScan(
   `).bind(userHash, item, bin, confidence, sveitarfelag, imageKey, lat, lng).run();
 }
 
+// Save image to R2 and quiz_images table
+async function saveQuizImage(
+  r2: R2Bucket,
+  db: D1Database,
+  imageBase64: string,
+  item: string,
+  bin: string,
+  reason: string,
+  confidence: number,
+  userHash: string
+): Promise<string | null> {
+  try {
+    // Generate filename: item_bin_timestamp.jpg
+    const sanitizedItem = item.toLowerCase()
+      .replace(/[^a-záéíóúýþðæö0-9]/gi, '_')
+      .substring(0, 30);
+    const timestamp = Date.now();
+    const imageKey = `quiz/${sanitizedItem}_${bin}_${timestamp}.jpg`;
+
+    // Convert base64 to binary
+    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+
+    // Save to R2
+    await r2.put(imageKey, binaryData, {
+      httpMetadata: { contentType: 'image/jpeg' },
+      customMetadata: { item, bin, userHash },
+    });
+
+    // Save to quiz_images table
+    await db.prepare(`
+      INSERT INTO quiz_images (image_key, item, bin, reason, confidence, submitted_by)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(imageKey, item, bin, reason, confidence, userHash).run();
+
+    console.log(`[Quiz] Saved image: ${imageKey}`);
+    return imageKey;
+  } catch (err) {
+    console.error('[Quiz] Failed to save image:', err);
+    return null;
+  }
+}
+
 // POST /api/identify
 identify.post('/', async (c) => {
   const env = c.env;
@@ -188,7 +231,22 @@ identify.post('/', async (c) => {
     // Get fun fact
     const funFact = await getRandomFunFact(env.DB);
 
-    // Log scan (without saving image by default)
+    // Save image for quiz if confidence is good (> 0.7) and item was identified
+    let imageKey: string | null = null;
+    if (result.confidence >= 0.7 && result.item !== 'Óþekkt hlutur') {
+      imageKey = await saveQuizImage(
+        env.IMAGES,
+        env.DB,
+        body.image,
+        result.item,
+        result.bin,
+        result.reason,
+        result.confidence,
+        userHash
+      );
+    }
+
+    // Log scan
     await logScan(
       env.DB,
       userHash,
@@ -196,7 +254,7 @@ identify.post('/', async (c) => {
       result.bin,
       result.confidence,
       'reykjavik', // TODO: detect from coords
-      null,
+      imageKey,
       body.lat || null,
       body.lng || null
     );
@@ -211,6 +269,7 @@ identify.post('/', async (c) => {
       points,
       streak: stats.current_streak,
       funFact: funFact || undefined,
+      imageKey: imageKey || undefined,
     });
   } catch (err) {
     console.error('Identify error:', err);

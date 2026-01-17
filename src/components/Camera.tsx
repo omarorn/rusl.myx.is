@@ -1,12 +1,14 @@
 import { useEffect } from 'react';
 import { useCamera } from '../hooks/useCamera';
+import type { ThinkingStep } from '../App';
 
 interface CameraProps {
   onCapture: (image: string) => void;
   isLoading: boolean;
+  thinkingSteps: ThinkingStep[];
 }
 
-export function Camera({ onCapture, isLoading }: CameraProps) {
+export function Camera({ onCapture, isLoading, thinkingSteps }: CameraProps) {
   const { videoRef, canvasRef, isStreaming, error, startCamera, captureImage } = useCamera();
 
   useEffect(() => {
@@ -21,7 +23,7 @@ export function Camera({ onCapture, isLoading }: CameraProps) {
   return (
     <div className="relative h-full flex flex-col">
       <canvas ref={canvasRef} className="hidden" />
-      
+
       {error ? (
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="text-center">
@@ -43,6 +45,34 @@ export function Camera({ onCapture, isLoading }: CameraProps) {
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="w-64 h-64 border-4 border-white/50 rounded-3xl" />
             </div>
+
+            {/* Thinking steps overlay */}
+            {thinkingSteps.length > 0 && (
+              <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                <div className="bg-white/95 rounded-2xl p-6 mx-4 max-w-sm w-full shadow-2xl">
+                  <div className="space-y-3">
+                    {thinkingSteps.map((step, i) => (
+                      <div
+                        key={step.id}
+                        className={`flex items-center gap-3 transition-all duration-300 ${
+                          step.done ? 'opacity-50' : 'opacity-100'
+                        }`}
+                      >
+                        <span className="text-2xl">{step.icon}</span>
+                        <span className={`flex-1 ${step.done ? 'line-through text-gray-400' : 'text-gray-800 font-medium'}`}>
+                          {step.text}
+                        </span>
+                        {step.done ? (
+                          <span className="text-green-500">✓</span>
+                        ) : i === thinkingSteps.length - 1 ? (
+                          <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Capture button */}
@@ -50,7 +80,7 @@ export function Camera({ onCapture, isLoading }: CameraProps) {
             <button
               onClick={handleCapture}
               disabled={!isStreaming || isLoading}
-              className="w-20 h-20 rounded-full bg-white border-4 border-green-500 
+              className="w-20 h-20 rounded-full bg-white border-4 border-green-500
                        flex items-center justify-center shadow-lg
                        disabled:opacity-50 active:scale-95 transition-transform"
             >

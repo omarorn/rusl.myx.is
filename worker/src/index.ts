@@ -4,6 +4,7 @@ import type { Env } from './types';
 import identify from './routes/identify';
 import stats from './routes/stats';
 import rules from './routes/rules';
+import quiz from './routes/quiz';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -18,7 +19,7 @@ app.use('*', cors({
 app.get('/api', (c) => {
   return c.json({
     service: 'trash.myx.is',
-    version: '1.0.0',
+    version: '1.1.0',
     status: 'ok',
     endpoints: [
       'POST /api/identify',
@@ -27,6 +28,11 @@ app.get('/api', (c) => {
       'GET /api/stats/global',
       'GET /api/rules',
       'GET /api/rules/:sveitarfelag',
+      'GET /api/quiz/random',
+      'POST /api/quiz/answer',
+      'POST /api/quiz/score',
+      'GET /api/quiz/leaderboard',
+      'GET /api/quiz/stats',
     ],
   });
 });
@@ -35,6 +41,7 @@ app.get('/api', (c) => {
 app.route('/api/identify', identify);
 app.route('/api/stats', stats);
 app.route('/api/rules', rules);
+app.route('/api/quiz', quiz);
 
 // 404 handler for API routes only
 app.notFound((c) => {
