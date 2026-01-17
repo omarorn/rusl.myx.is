@@ -1,4 +1,5 @@
 import type { Env, ClassificationResult, BinType } from '../types';
+import { classifyWithCloudflareAI } from './cloudflare-ai';
 import { classifyWithGemini } from './gemini';
 import {
   checkOverrides,
@@ -9,11 +10,28 @@ export async function classifyItem(
   imageBase64: string,
   env: Env
 ): Promise<ClassificationResult> {
-  // Use Gemini for classification (HF inference API deprecated)
+  // Try Cloudflare AI first (fast, on-edge)
+  const cfResult = await classifyWithCloudflareAI(imageBase64, env.AI);
+
+  if (cfResult && cfResult.confidence > 0.5) {
+    // Check for Iceland-specific overrides
+    const override = checkOverrides(cfResult.item);
+    const bin: BinType = override || (cfResult.bin as BinType);
+
+    return {
+      item: cfResult.item,
+      bin,
+      binInfo: BIN_INFO[bin],
+      reason: cfResult.reason,
+      confidence: cfResult.confidence,
+      source: 'gemini', // keeping for type compat
+    };
+  }
+
+  // Fallback to Gemini for low confidence or CF failure
   const geminiResult = await classifyWithGemini(imageBase64, env.GEMINI_API_KEY);
 
   if (geminiResult) {
-    // Check for Iceland-specific overrides
     const override = checkOverrides(geminiResult.item);
     const bin: BinType = override || (geminiResult.bin as BinType);
 
@@ -27,7 +45,7 @@ export async function classifyItem(
     };
   }
 
-  // If Gemini fails, return safe default
+  // If both fail, return safe default
   return {
     item: 'Óþekkt hlutur',
     bin: 'mixed',

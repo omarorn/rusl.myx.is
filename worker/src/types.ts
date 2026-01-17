@@ -3,6 +3,7 @@ export interface Env {
   DB: D1Database;
   IMAGES: R2Bucket;
   CACHE: KVNamespace;
+  AI: Ai;
   HF_API_KEY: string;
   GEMINI_API_KEY: string;
   ENVIRONMENT: string;
