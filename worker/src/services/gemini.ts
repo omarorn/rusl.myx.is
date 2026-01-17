@@ -1,6 +1,6 @@
 import type { GeminiResponse, BinType } from '../types';
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 const SYSTEM_PROMPT = `Þú ert sérfræðingur í ruslaflokkun á Íslandi (SORPA svæðið).
 
@@ -40,8 +40,8 @@ export async function classifyWithGemini(
       contents: [{
         parts: [
           {
-            inline_data: {
-              mime_type: 'image/jpeg',
+            inlineData: {
+              mimeType: 'image/jpeg',
               data: imageData,
             },
           },
