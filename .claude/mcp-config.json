@@ -1,0 +1,82 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@smithery-ai/github",
+        "--key",
+        "${SMITHERY_KEY}",
+        "--profile",
+        "${SMITHERY_PROFILE}"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "airtable": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "airtable-server",
+        "--key",
+        "${SMITHERY_KEY}",
+        "--profile",
+        "${SMITHERY_PROFILE}"
+      ],
+      "env": {
+        "AIRTABLE_API_KEY": "${AIRTABLE_API_KEY}"
+      }
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@HenkDz/selfhosted-supabase-mcp",
+        "--key",
+        "${SMITHERY_KEY}",
+        "--profile",
+        "${SMITHERY_PROFILE}"
+      ],
+      "env": {
+        "SUPABASE_URL": "${SUPABASE_URL}",
+        "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}",
+        "SUPABASE_SERVICE_ROLE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}"
+      }
+    },
+    "railway": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@jason-tan-swe/railway-mcp",
+        "--key",
+        "${SMITHERY_KEY}",
+        "--profile",
+        "${SMITHERY_PROFILE}"
+      ],
+      "env": {
+        "RAILWAY_TOKEN": "${RAILWAY_TOKEN}",
+        "RAILWAY_PROJECT_ID": "${RAILWAY_PROJECT_ID}"
+      }
+    },
+    "cloudflare": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@cloudflare/mcp-server-cloudflare"
+      ],
+      "env": {
+        "CLOUDFLARE_ACCOUNT_ID": "${CLOUDFLARE_ACCOUNT_ID}",
+        "CLOUDFLARE_API_TOKEN": "${CLOUDFLARE_API_TOKEN}"
+      }
+    }
+  }
+}
