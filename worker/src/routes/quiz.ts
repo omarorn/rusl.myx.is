@@ -22,6 +22,28 @@ interface QuizScore {
   created_at: number;
 }
 
+// GET /api/quiz/image/:key - Serve quiz image from R2
+quiz.get('/image/*', async (c) => {
+  const env = c.env;
+  const imageKey = c.req.path.replace('/api/quiz/image/', '');
+
+  try {
+    const object = await env.IMAGES.get(imageKey);
+    if (!object) {
+      return c.json({ error: 'Mynd fannst ekki' }, 404);
+    }
+
+    const headers = new Headers();
+    headers.set('Content-Type', object.httpMetadata?.contentType || 'image/jpeg');
+    headers.set('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+
+    return new Response(object.body, { headers });
+  } catch (err) {
+    console.error('Quiz image error:', err);
+    return c.json({ error: 'Villa við að sækja mynd' }, 500);
+  }
+});
+
 // GET /api/quiz/random - Get a random quiz image
 quiz.get('/random', async (c) => {
   const env = c.env;
@@ -45,8 +67,8 @@ quiz.get('/random', async (c) => {
       'UPDATE quiz_images SET times_shown = times_shown + 1 WHERE id = ?'
     ).bind(image.id).run();
 
-    // Generate image URL from R2
-    const imageUrl = `https://trash-myx-images.${c.req.header('host')?.split('.')[1] || 'myx'}.is/${image.image_key}`;
+    // Generate image URL through our API
+    const imageUrl = `/api/quiz/image/${image.image_key}`;
 
     return c.json({
       id: image.id,

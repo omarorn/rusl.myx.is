@@ -109,6 +109,7 @@ export default function App() {
         {view === 'camera' && <Camera onCapture={handleCapture} isLoading={isLoading} thinkingSteps={thinkingSteps} />}
         {view === 'result' && result && <Result result={result} onReset={handleReset} />}
         {view === 'stats' && <Stats onClose={() => setView('camera')} />}
+        {view === 'quiz' && <Quiz onClose={() => setView('camera')} />}
       </main>
     </div>
   );

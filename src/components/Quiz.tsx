@@ -16,7 +16,7 @@ interface QuizProps {
   onClose: () => void;
 }
 
-const R2_PUBLIC_URL = 'https://pub-trash-myx.r2.dev'; // You'll need to set up public access
+const API_BASE = import.meta.env.PROD ? 'https://trash.myx.is' : 'http://localhost:8787';
 
 export function Quiz({ onClose }: QuizProps) {
   const [mode, setMode] = useState<GameMode>('menu');
@@ -332,11 +332,11 @@ export function Quiz({ onClose }: QuizProps) {
         <div className="flex-1 relative bg-gray-900 min-h-0">
           {question && (
             <img
-              src={`${R2_PUBLIC_URL}/${question.imageKey}`}
+              src={`${API_BASE}${question.imageUrl}`}
               alt="Hvað er þetta?"
               className="absolute inset-0 w-full h-full object-contain"
               onError={(e) => {
-                // Fallback if R2 public URL doesn't work
+                // Fallback if image doesn't load
                 (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="50" x="50" text-anchor="middle" font-size="40">📷</text></svg>';
               }}
             />
