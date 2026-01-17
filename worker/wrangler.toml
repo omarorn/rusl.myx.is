@@ -1,0 +1,32 @@
+name = "trash-myx"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# Custom domain
+routes = [
+  { pattern = "trash.myx.is", custom_domain = true }
+]
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "trash-myx-db"
+database_id = "56f8b19e-c7bb-40e1-b5f9-a47eb2d06b93"
+
+# R2 Bucket (for debug images)
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "trash-myx-images"
+
+# KV Namespace (rate limiting + cache)
+[[kv_namespaces]]
+binding = "CACHE"
+id = "e5536c0571954289b4d21d9ad35918ef"
+
+[vars]
+ENVIRONMENT = "production"
+DEBUG_IMAGES = "false"
+
+# Secrets (set via: wrangler secret put HF_API_KEY)
+# HF_API_KEY - HuggingFace Inference API key
+# GEMINI_API_KEY - Google Gemini API key (fallback)

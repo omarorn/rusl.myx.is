@@ -1,0 +1,216 @@
+import { Hono } from 'hono';
+import type { Env, IdentifyRequest, IdentifyResponse, UserStats } from '../types';
+import { classifyItem } from '../services/classifier';
+
+const identify = new Hono<{ Bindings: Env }>();
+
+// Rate limit: 30 requests per minute per IP
+const RATE_LIMIT = 30;
+const RATE_WINDOW = 60; // seconds
+
+async function checkRateLimit(ip: string, cache: KVNamespace): Promise<boolean> {
+  const key = `ratelimit:${ip}`;
+  const current = await cache.get(key);
+  
+  if (!current) {
+    await cache.put(key, '1', { expirationTtl: RATE_WINDOW });
+    return true;
+  }
+  
+  const count = parseInt(current, 10);
+  if (count >= RATE_LIMIT) {
+    return false;
+  }
+  
+  await cache.put(key, String(count + 1), { expirationTtl: RATE_WINDOW });
+  return true;
+}
+
+async function updateUserStats(
+  db: D1Database, 
+  userHash: string, 
+  points: number
+): Promise<UserStats> {
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Get existing user or create new
+  let user = await db.prepare(
+    'SELECT * FROM users WHERE user_hash = ?'
+  ).bind(userHash).first<UserStats>();
+  
+  if (!user) {
+    // Create new user
+    await db.prepare(`
+      INSERT INTO users (user_hash, total_scans, total_points, current_streak, best_streak, last_scan_date)
+      VALUES (?, 1, ?, 1, 1, ?)
+    `).bind(userHash, points, today).run();
+    
+    return {
+      user_hash: userHash,
+      total_scans: 1,
+      total_points: points,
+      current_streak: 1,
+      best_streak: 1,
+      last_scan_date: today,
+    };
+  }
+  
+  // Calculate streak
+  let newStreak = user.current_streak;
+  const lastDate = user.last_scan_date;
+  
+  if (lastDate !== today) {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    
+    if (lastDate === yesterdayStr) {
+      newStreak = user.current_streak + 1;
+    } else {
+      newStreak = 1; // Reset streak
+    }
+  }
+  
+  const newBestStreak = Math.max(user.best_streak, newStreak);
+  
+  // Update user
+  await db.prepare(`
+    UPDATE users SET 
+      total_scans = total_scans + 1,
+      total_points = total_points + ?,
+      current_streak = ?,
+      best_streak = ?,
+      last_scan_date = ?
+    WHERE user_hash = ?
+  `).bind(points, newStreak, newBestStreak, today, userHash).run();
+  
+  return {
+    user_hash: userHash,
+    total_scans: user.total_scans + 1,
+    total_points: user.total_points + points,
+    current_streak: newStreak,
+    best_streak: newBestStreak,
+    last_scan_date: today,
+  };
+}
+
+async function getRandomFunFact(db: D1Database): Promise<string | null> {
+  const result = await db.prepare(
+    'SELECT fact_is FROM fun_facts ORDER BY RANDOM() LIMIT 1'
+  ).first<{ fact_is: string }>();
+  
+  return result?.fact_is || null;
+}
+
+async function logScan(
+  db: D1Database,
+  userHash: string,
+  item: string,
+  bin: string,
+  confidence: number,
+  sveitarfelag: string,
+  imageKey: string | null,
+  lat: number | null,
+  lng: number | null
+): Promise<void> {
+  await db.prepare(`
+    INSERT INTO scans (user_hash, item, bin, confidence, sveitarfelag, image_key, lat, lng)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(userHash, item, bin, confidence, sveitarfelag, imageKey, lat, lng).run();
+}
+
+// POST /api/identify
+identify.post('/', async (c) => {
+  const env = c.env;
+  const ip = c.req.header('CF-Connecting-IP') || 'unknown';
+  
+  // Rate limit check
+  const allowed = await checkRateLimit(ip, env.CACHE);
+  if (!allowed) {
+    return c.json<IdentifyResponse>({
+      success: false,
+      item: '',
+      bin: 'mixed',
+      binInfo: { name_is: '', color: '', icon: '' },
+      reason: '',
+      confidence: 0,
+      points: 0,
+      streak: 0,
+      error: 'Of margar fyrirspurnir. Reyndu aftur eftir mínútu.',
+    }, 429);
+  }
+  
+  // Parse request
+  let body: IdentifyRequest;
+  try {
+    body = await c.req.json<IdentifyRequest>();
+  } catch {
+    return c.json<IdentifyResponse>({
+      success: false,
+      item: '',
+      bin: 'mixed',
+      binInfo: { name_is: '', color: '', icon: '' },
+      reason: '',
+      confidence: 0,
+      points: 0,
+      streak: 0,
+      error: 'Ógild fyrirspurn.',
+    }, 400);
+  }
+  
+  if (!body.image) {
+    return c.json<IdentifyResponse>({
+      success: false,
+      item: '',
+      bin: 'mixed',
+      binInfo: { name_is: '', color: '', icon: '' },
+      reason: '',
+      confidence: 0,
+      points: 0,
+      streak: 0,
+      error: 'Mynd vantar.',
+    }, 400);
+  }
+  
+  // Generate user hash if not provided
+  const userHash = body.userHash || `anon_${ip.replace(/\./g, '_')}`;
+  
+  // Classify the item
+  const result = await classifyItem(body.image, env);
+  
+  // Calculate points (10 base + 5 bonus for high confidence)
+  const points = 10 + (result.confidence >= 0.9 ? 5 : 0);
+  
+  // Update user stats
+  const stats = await updateUserStats(env.DB, userHash, points);
+  
+  // Get fun fact
+  const funFact = await getRandomFunFact(env.DB);
+  
+  // Log scan (without saving image by default)
+  await logScan(
+    env.DB,
+    userHash,
+    result.item,
+    result.bin,
+    result.confidence,
+    'reykjavik', // TODO: detect from coords
+    null,
+    body.lat || null,
+    body.lng || null
+  );
+  
+  return c.json<IdentifyResponse>({
+    success: true,
+    item: result.item,
+    bin: result.bin,
+    binInfo: result.binInfo,
+    reason: result.reason,
+    confidence: result.confidence,
+    points,
+    streak: stats.current_streak,
+    funFact: funFact || undefined,
+  });
+});
+
+export default identify;
