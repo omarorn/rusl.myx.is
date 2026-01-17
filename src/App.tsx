@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Camera } from './components/Camera';
 import { Result } from './components/Result';
 import { Stats } from './components/Stats';
+import { Quiz } from './components/Quiz';
 import { identifyItem, type IdentifyResponse } from './services/api';
 
-type View = 'camera' | 'result' | 'stats';
+type View = 'camera' | 'result' | 'stats' | 'quiz';
 
 export type ThinkingStep = {
   id: string;
@@ -89,7 +90,10 @@ export default function App() {
       {view === 'camera' && (
         <header className="safe-top bg-green-600 text-white p-4 flex items-center justify-between shadow-lg">
           <h1 className="text-xl font-bold">♻️ Ruslaflokkun</h1>
-          <button onClick={() => setView('stats')} className="text-2xl">📊</button>
+          <div className="flex gap-3">
+            <button onClick={() => setView('quiz')} className="text-2xl">🎮</button>
+            <button onClick={() => setView('stats')} className="text-2xl">📊</button>
+          </div>
         </header>
       )}
 
