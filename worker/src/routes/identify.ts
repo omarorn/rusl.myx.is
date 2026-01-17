@@ -123,7 +123,7 @@ async function logScan(
 identify.post('/', async (c) => {
   const env = c.env;
   const ip = c.req.header('CF-Connecting-IP') || 'unknown';
-  
+
   // Rate limit check
   const allowed = await checkRateLimit(ip, env.CACHE);
   if (!allowed) {
@@ -139,7 +139,7 @@ identify.post('/', async (c) => {
       error: 'Of margar fyrirspurnir. Reyndu aftur eftir mínútu.',
     }, 429);
   }
-  
+
   // Parse request
   let body: IdentifyRequest;
   try {
@@ -157,7 +157,7 @@ identify.post('/', async (c) => {
       error: 'Ógild fyrirspurn.',
     }, 400);
   }
-  
+
   if (!body.image) {
     return c.json<IdentifyResponse>({
       success: false,
@@ -171,46 +171,61 @@ identify.post('/', async (c) => {
       error: 'Mynd vantar.',
     }, 400);
   }
-  
-  // Generate user hash if not provided
-  const userHash = body.userHash || `anon_${ip.replace(/\./g, '_')}`;
-  
-  // Classify the item
-  const result = await classifyItem(body.image, env);
-  
-  // Calculate points (10 base + 5 bonus for high confidence)
-  const points = 10 + (result.confidence >= 0.9 ? 5 : 0);
-  
-  // Update user stats
-  const stats = await updateUserStats(env.DB, userHash, points);
-  
-  // Get fun fact
-  const funFact = await getRandomFunFact(env.DB);
-  
-  // Log scan (without saving image by default)
-  await logScan(
-    env.DB,
-    userHash,
-    result.item,
-    result.bin,
-    result.confidence,
-    'reykjavik', // TODO: detect from coords
-    null,
-    body.lat || null,
-    body.lng || null
-  );
-  
-  return c.json<IdentifyResponse>({
-    success: true,
-    item: result.item,
-    bin: result.bin,
-    binInfo: result.binInfo,
-    reason: result.reason,
-    confidence: result.confidence,
-    points,
-    streak: stats.current_streak,
-    funFact: funFact || undefined,
-  });
+
+  try {
+    // Generate user hash if not provided
+    const userHash = body.userHash || `anon_${ip.replace(/\./g, '_')}`;
+
+    // Classify the item
+    const result = await classifyItem(body.image, env);
+
+    // Calculate points (10 base + 5 bonus for high confidence)
+    const points = 10 + (result.confidence >= 0.9 ? 5 : 0);
+
+    // Update user stats
+    const stats = await updateUserStats(env.DB, userHash, points);
+
+    // Get fun fact
+    const funFact = await getRandomFunFact(env.DB);
+
+    // Log scan (without saving image by default)
+    await logScan(
+      env.DB,
+      userHash,
+      result.item,
+      result.bin,
+      result.confidence,
+      'reykjavik', // TODO: detect from coords
+      null,
+      body.lat || null,
+      body.lng || null
+    );
+
+    return c.json<IdentifyResponse>({
+      success: true,
+      item: result.item,
+      bin: result.bin,
+      binInfo: result.binInfo,
+      reason: result.reason,
+      confidence: result.confidence,
+      points,
+      streak: stats.current_streak,
+      funFact: funFact || undefined,
+    });
+  } catch (err) {
+    console.error('Identify error:', err);
+    return c.json<IdentifyResponse>({
+      success: false,
+      item: '',
+      bin: 'mixed',
+      binInfo: { name_is: '', color: '', icon: '' },
+      reason: '',
+      confidence: 0,
+      points: 0,
+      streak: 0,
+      error: `Villa: ${err instanceof Error ? err.message : 'Óþekkt villa'}`,
+    }, 500);
+  }
 });
 
 export default identify;

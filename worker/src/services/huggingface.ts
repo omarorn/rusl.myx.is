@@ -1,7 +1,7 @@
 import type { HFClassification } from '../types';
 
 const HF_MODEL = 'watersplash/waste-classification';
-const HF_API_URL = `https://api-inference.huggingface.co/models/${HF_MODEL}`;
+const HF_API_URL = `https://router.huggingface.co/hf-inference/models/${HF_MODEL}`;
 
 export interface HFResult {
   label: string;
