@@ -30,3 +30,7 @@ DEBUG_IMAGES = "false"
 # Secrets (set via: wrangler secret put HF_API_KEY)
 # HF_API_KEY - HuggingFace Inference API key
 # GEMINI_API_KEY - Google Gemini API key (fallback)
+
+# Static assets (landing page)
+[assets]
+directory = "../dist"

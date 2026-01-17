@@ -14,8 +14,8 @@ app.use('*', cors({
   allowHeaders: ['Content-Type'],
 }));
 
-// Health check
-app.get('/', (c) => {
+// Health check (API only)
+app.get('/api', (c) => {
   return c.json({
     service: 'trash.myx.is',
     version: '1.0.0',
@@ -36,9 +36,13 @@ app.route('/api/identify', identify);
 app.route('/api/stats', stats);
 app.route('/api/rules', rules);
 
-// 404 handler
+// 404 handler for API routes only
 app.notFound((c) => {
-  return c.json({ error: 'Slóð finnst ekki' }, 404);
+  if (c.req.path.startsWith('/api')) {
+    return c.json({ error: 'Slóð finnst ekki' }, 404);
+  }
+  // Let static assets handle non-API routes
+  return c.notFound();
 });
 
 // Error handler
