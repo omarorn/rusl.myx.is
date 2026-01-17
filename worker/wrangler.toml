@@ -23,6 +23,10 @@ bucket_name = "trash-myx-images"
 binding = "CACHE"
 id = "e5536c0571954289b4d21d9ad35918ef"
 
+# Workers AI
+[ai]
+binding = "AI"
+
 [vars]
 ENVIRONMENT = "production"
 DEBUG_IMAGES = "false"
