@@ -35,8 +35,11 @@ export async function classifyWithCloudflareAI(
   ai: Ai
 ): Promise<CloudflareAIResponse | null> {
   try {
-    // Remove data URL prefix if present
-    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    // Ensure we have a proper data URL
+    let imageUrl = imageBase64;
+    if (!imageBase64.startsWith('data:')) {
+      imageUrl = `data:image/jpeg;base64,${imageBase64}`;
+    }
 
     const response = await ai.run('@cf/meta/llama-3.2-11b-vision-instruct', {
       messages: [
@@ -48,8 +51,10 @@ export async function classifyWithCloudflareAI(
               text: SYSTEM_PROMPT,
             },
             {
-              type: 'image',
-              image: base64Data,
+              type: 'image_url',
+              image_url: {
+                url: imageUrl,
+              },
             },
           ],
         },
