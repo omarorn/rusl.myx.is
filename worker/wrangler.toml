@@ -31,9 +31,14 @@ binding = "AI"
 ENVIRONMENT = "production"
 DEBUG_IMAGES = "false"
 
+# Scheduled cron trigger (hourly review)
+[triggers]
+crons = ["0 * * * *"]  # Every hour at minute 0
+
 # Secrets (set via: wrangler secret put HF_API_KEY)
 # HF_API_KEY - HuggingFace Inference API key
 # GEMINI_API_KEY - Google Gemini API key (fallback)
+# CLAUDE_API_KEY - Anthropic Claude API key (for deep review)
 
 # Static assets (landing page)
 [assets]
