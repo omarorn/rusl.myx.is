@@ -1,7 +1,7 @@
 -- trash-myx D1 Schema
 -- Run with: wrangler d1 execute trash-myx-db --file=./migrations/0001_init.sql
 
--- Skannanir
+-- Skannanir (Scans table)
 CREATE TABLE IF NOT EXISTS scans (
   id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
   created_at INTEGER DEFAULT (unixepoch()),
@@ -12,13 +12,15 @@ CREATE TABLE IF NOT EXISTS scans (
   sveitarfelag TEXT DEFAULT 'reykjavik',
   image_key TEXT,
   lat REAL,
-  lng REAL
+  lng REAL,
+  source TEXT DEFAULT 'pwa'
 );
 
 CREATE INDEX IF NOT EXISTS idx_scans_user ON scans(user_hash);
 CREATE INDEX IF NOT EXISTS idx_scans_date ON scans(created_at);
+CREATE INDEX IF NOT EXISTS idx_scans_bin ON scans(bin);
 
--- Notendur (anonymous gamification)
+-- Notendur (Users table - anonymous gamification)
 CREATE TABLE IF NOT EXISTS users (
   user_hash TEXT PRIMARY KEY,
   total_scans INTEGER DEFAULT 0,
@@ -29,7 +31,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at INTEGER DEFAULT (unixepoch())
 );
 
--- Fun facts
+-- Fun facts table
 CREATE TABLE IF NOT EXISTS fun_facts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   fact_is TEXT NOT NULL,
@@ -37,8 +39,15 @@ CREATE TABLE IF NOT EXISTS fun_facts (
 );
 
 -- Initial fun facts
-INSERT INTO fun_facts (fact_is, category) VALUES 
-  ('Ein plastflaska tekur allt ad 450 ar ad brotna nidur.', 'plastic'),
-  ('Endurvinnsla a einni albrusa sparar orku fyrir 3 klst sjonvarp.', 'metal'),
-  ('3D prentad plast brotnar adeins nidur vid 50+ gradu hita.', '3d_print'),
-  ('Gler ma endurvinna endalaust an thess ad tapa gaedum.', 'glass');
+INSERT INTO fun_facts (fact_is, category) VALUES
+  ('Ein plastflaska tekur allt að 450 ár að brotna niður.', 'plastic'),
+  ('Endurvinnsla á einni álumbúð sparar næga orku til að keyra sjónvarp í 3 klst.', 'metal'),
+  ('3D prentað plast brotnar aðeins niður við 50+ gráðu hita.', '3d_print'),
+  ('Gler má endurvinna endalaust án þess að tapa gæðum.', 'glass'),
+  ('Pappír má endurnýta 5-7 sinnum áður en trefjarnir verða of stuttar.', 'paper'),
+  ('Matarúrgangur á Íslandi framleiðir metangas sem er 25x verri en CO2.', 'food'),
+  ('Íslendingar framleiða um 500kg af úrgangi á mann á ári.', 'general'),
+  ('Skilagjaldskerfið safnar um 90% af öllum dósum og flöskum á Íslandi.', 'deposit'),
+  ('SORPA brennir um 100.000 tonn af úrgangi á ári til að framleiða rafmagn.', 'general'),
+  ('Einn líter af olíu getur mengað allt að 1 milljón lítra af vatni.', 'recycling_center'),
+  ('Rafhlöður innihalda þungmálma sem eru mjög skaðlegir umhverfinu.', 'recycling_center');

@@ -4,14 +4,14 @@ export interface Env {
   IMAGES: R2Bucket;
   CACHE: KVNamespace;
   AI: Ai;
-  HF_API_KEY: string;
+  HF_API_KEY?: string;  // Deprecated, not currently used
   GEMINI_API_KEY: string;
   CLAUDE_API_KEY?: string;  // Optional for deep review
   ENVIRONMENT: string;
   DEBUG_IMAGES: string;
 }
 
-// Classification result from HuggingFace
+// Classification label result (legacy type, kept for compatibility)
 export interface HFClassification {
   label: string;
   score: number;
