@@ -5,6 +5,7 @@ import identify from './routes/identify';
 import stats from './routes/stats';
 import rules from './routes/rules';
 import quiz from './routes/quiz';
+import describe from './routes/describe';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -33,6 +34,7 @@ app.get('/api', (c) => {
       'POST /api/quiz/score',
       'GET /api/quiz/leaderboard',
       'GET /api/quiz/stats',
+      'POST /api/describe',
     ],
   });
 });
@@ -42,6 +44,7 @@ app.route('/api/identify', identify);
 app.route('/api/stats', stats);
 app.route('/api/rules', rules);
 app.route('/api/quiz', quiz);
+app.route('/api/describe', describe);
 
 // 404 handler for API routes only
 app.notFound((c) => {

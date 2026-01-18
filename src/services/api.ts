@@ -123,4 +123,20 @@ export async function getQuizLeaderboard(mode: string = 'timed'): Promise<{ mode
   return response.json();
 }
 
+// Live description API
+export interface DescribeResponse {
+  success: boolean;
+  description: string;
+  error?: string;
+}
+
+export async function describeImage(imageBase64: string): Promise<DescribeResponse> {
+  const response = await fetch(`${API_BASE}/api/describe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: imageBase64 }),
+  });
+  return response.json();
+}
+
 export { getUserHash };

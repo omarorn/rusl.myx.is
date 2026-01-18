@@ -6,6 +6,33 @@ import {
   BIN_INFO
 } from './iceland-rules';
 
+// Check if AI response seems confused/uncertain
+function isConfusedResponse(item: string, reason: string): boolean {
+  const confusedTerms = [
+    'óþekkt', 'unknown', 'unclear', 'óljóst', 'veit ekki',
+    'cannot identify', 'not sure', 'might be', 'could be',
+    'difficult to', 'hard to', 'cannot determine',
+    '3d print', '3d prent', 'pla', 'abs', 'petg' // Often misidentified
+  ];
+
+  const lowerItem = item.toLowerCase();
+  const lowerReason = reason.toLowerCase();
+
+  // Check for confused terms
+  for (const term of confusedTerms) {
+    if (lowerItem.includes(term) || lowerReason.includes(term)) {
+      return true;
+    }
+  }
+
+  // Very short or generic item names suggest confusion
+  if (item.length < 3 || item === 'hlutur' || item === 'item') {
+    return true;
+  }
+
+  return false;
+}
+
 export async function classifyItem(
   imageBase64: string,
   env: Env
@@ -13,7 +40,12 @@ export async function classifyItem(
   // Try Cloudflare AI first (fast, on-edge)
   const cfResult = await classifyWithCloudflareAI(imageBase64, env.AI);
 
-  if (cfResult && cfResult.confidence > 0.5) {
+  // Check if result is good enough or if we should try Gemini
+  const shouldFallback = !cfResult ||
+    cfResult.confidence < 0.7 ||  // Higher threshold
+    isConfusedResponse(cfResult.item, cfResult.reason);
+
+  if (cfResult && !shouldFallback) {
     // Check for Iceland-specific overrides
     const override = checkOverrides(cfResult.item);
     const bin: BinType = override || (cfResult.bin as BinType);
@@ -24,9 +56,13 @@ export async function classifyItem(
       binInfo: BIN_INFO[bin],
       reason: cfResult.reason,
       confidence: cfResult.confidence,
-      source: 'gemini', // keeping for type compat
+      source: 'cloudflare',
     };
   }
+
+  console.log('[Classifier] Falling back to Gemini:', cfResult ?
+    `conf=${cfResult.confidence}, confused=${isConfusedResponse(cfResult.item, cfResult.reason)}` :
+    'no CF result');
 
   // Fallback to Gemini for low confidence or CF failure
   const geminiResult = await classifyWithGemini(imageBase64, env.GEMINI_API_KEY);

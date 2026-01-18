@@ -41,11 +41,25 @@ export const ICELAND_OVERRIDES: Record<string, BinType> = {
   'styrofoam': 'recycling_center',
   'foam': 'recycling_center',
   'polystyrene': 'recycling_center',
-  
+
   // Contaminated → Mixed
   'greasy cardboard': 'mixed',
   'pizza box': 'mixed',  // Usually contaminated
   'dirty paper': 'mixed',
+
+  // Large metal items → Recycling center (not green bin)
+  'bronze': 'recycling_center',
+  'brass': 'recycling_center',
+  'copper': 'recycling_center',
+  'iron': 'recycling_center',
+  'steel frame': 'recycling_center',
+  'metal frame': 'recycling_center',
+  'picture frame': 'recycling_center',
+  'rammi': 'recycling_center',  // Icelandic for frame
+  'málmrammi': 'recycling_center',
+  'járn': 'recycling_center',
+  'kopar': 'recycling_center',
+  'eir': 'recycling_center',  // Bronze/brass in Icelandic
 };
 
 // Bin information for UI
@@ -111,6 +125,13 @@ export function getReasonText(item: string, bin: BinType, source: string): strin
     return 'TetraPak fer í pappírsflokkinn þó það sé úr mörgum efnum. Það er sent til Svíþjóðar til endurvinnslu.';
   }
   
+  // Metal items
+  if (lowerItem.includes('bronze') || lowerItem.includes('brass') || lowerItem.includes('copper') ||
+      lowerItem.includes('eir') || lowerItem.includes('kopar') || lowerItem.includes('rammi') ||
+      lowerItem.includes('frame') || lowerItem.includes('iron') || lowerItem.includes('járn')) {
+    return 'Stórir málmhlutir og rammar fara á endurvinnslustöð. Aðeins litlar málmumbúðir (dósir, lok) fara í grænu tunnuna.';
+  }
+
   if (bin === 'recycling_center') {
     return `${item} þarf að fara á endurvinnslustöð. Það er ekki hægt að setja þetta í heimatunnur.`;
   }
