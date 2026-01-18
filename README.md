@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="pwa/rusl.myx.is.jpg" alt="rusl.myx.is banner" width="100%" />
+</p>
+
 # 🗑️ rusl.myx.is — Íslensk ruslaflokkun með gervigreind
 
 > Greindu rusl með myndavélinni og finndu rétta tunnuna

@@ -9,18 +9,19 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Ruslaflokkun - trash.myx.is',
-        short_name: 'Rusl',
-        description: 'Greindu rusl með myndavélinni og finndu rétta tunnuna',
+        name: 'rusl.myx.is - Ruslaflokkun',
+        short_name: 'rusl.myx.is',
+        description: 'Greindu rusl með myndavélinni og finndu rétta tunnuna á Íslandi',
         theme_color: '#16a34a',
-        background_color: '#f0fdf4',
+        background_color: '#1f2937',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
         start_url: '/',
         icons: [
-          { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-          { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' }
+          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
       },
       workbox: {

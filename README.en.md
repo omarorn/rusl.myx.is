@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="pwa/rusl.myx.is.jpg" alt="rusl.myx.is banner" width="100%" />
+</p>
+
 # rusl.myx.is — Icelandic Waste Classification with AI
 
 > Scan waste with your camera and find the right bin
