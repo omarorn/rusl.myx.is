@@ -50,7 +50,7 @@ stats.get('/leaderboard', async (c) => {
 // GET /api/stats/global
 stats.get('/global', async (c) => {
   const result = await c.env.DB.prepare(`
-    SELECT 
+    SELECT
       COUNT(*) as total_scans,
       COUNT(DISTINCT user_hash) as total_users,
       SUM(CASE WHEN bin = 'paper' THEN 1 ELSE 0 END) as paper_count,
@@ -59,8 +59,46 @@ stats.get('/global', async (c) => {
       SUM(CASE WHEN bin = 'mixed' THEN 1 ELSE 0 END) as mixed_count
     FROM scans
   `).first();
-  
+
   return c.json(result || {});
+});
+
+// GET /api/stats/recent - 10 síðustu áhugaverðu dæmin (ekki mixed eða ógreint)
+stats.get('/recent', async (c) => {
+  const limit = Math.min(parseInt(c.req.query('limit') || '10', 10), 50);
+
+  const result = await c.env.DB.prepare(`
+    SELECT
+      id,
+      item,
+      bin,
+      confidence,
+      image_key,
+      created_at
+    FROM scans
+    WHERE bin != 'mixed'
+      AND item != 'Óþekkt hlutur'
+      AND item != 'Óþekkt'
+      AND confidence > 0.5
+    ORDER BY created_at DESC
+    LIMIT ?
+  `).bind(limit).all();
+
+  // Format the results with readable timestamps
+  const examples = (result.results || []).map((scan: Record<string, unknown>) => ({
+    id: scan.id,
+    item: scan.item,
+    bin: scan.bin,
+    confidence: scan.confidence,
+    imageKey: scan.image_key,
+    // Convert Unix timestamp to ISO string
+    scannedAt: scan.created_at ? new Date((scan.created_at as number) * 1000).toISOString() : null,
+  }));
+
+  return c.json({
+    count: examples.length,
+    examples,
+  });
 });
 
 export default stats;

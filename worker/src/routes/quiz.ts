@@ -233,4 +233,40 @@ quiz.delete('/scores', async (c) => {
   }
 });
 
+// DELETE /api/quiz/images - Delete all quiz images (with password)
+quiz.delete('/images', async (c) => {
+  const env = c.env;
+
+  try {
+    const { password } = await c.req.json<{ password: string }>();
+
+    if (password !== 'bobba') {
+      return c.json({ error: 'Rangt lykilorð' }, 403);
+    }
+
+    // Get all image keys to delete from R2
+    const images = await env.DB.prepare('SELECT image_key FROM quiz_images').all<{ image_key: string }>();
+
+    // Delete from R2
+    for (const img of images.results || []) {
+      try {
+        await env.IMAGES.delete(img.image_key);
+      } catch (e) {
+        console.error('Failed to delete R2 image:', img.image_key, e);
+      }
+    }
+
+    // Delete from database
+    await env.DB.prepare('DELETE FROM quiz_images').run();
+
+    return c.json({
+      success: true,
+      message: `${images.results?.length || 0} myndir eyddar`
+    });
+  } catch (err) {
+    console.error('Quiz delete images error:', err);
+    return c.json({ error: 'Villa við að eyða myndum' }, 500);
+  }
+});
+
 export default quiz;

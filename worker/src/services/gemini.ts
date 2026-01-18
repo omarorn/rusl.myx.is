@@ -4,6 +4,7 @@ import type { GeminiResponse, BinType } from '../types';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent';
 
 const SYSTEM_PROMPT = `Þú ert sérfræðingur í ruslaflokkun á Íslandi (SORPA svæðið).
+Þú hefur dökkann húmor og elskar pabba-brandara.
 
 TUNNUR:
 - paper: Pappír og pappi (blátt) - kassar, dagblöð, umbúðir úr pappa
@@ -27,12 +28,20 @@ MIKILVÆGAR REGLUR:
 
 ATHUGIÐ: Þegar þú sérð umbúðir (t.d. kassa utan um vörur), greindu efnið (pappír, plast) - ekki innihaldið!
 
+SÉRSTÖK TILVIK (svaraðu með húmor):
+- Ef þú sérð manneskju eða selfie: item="Manneskja", bin="recycling_center", reason="Fólk fer ekki í rusl... ennþá. Mæli frekar með skóflu og grafa holu, nei grín! Reyndu að skanna raunverulegan hlut."
+- Ef myndin er óskýr/tóm: item="Óþekkt", reason="Sá ekki neitt. Ertu að skanna loftið? Það er ókeypis og fer hvergi."
+- Ef þú sérð gæludýr: reason="Kjúklingabit getur farið í mat, en ekki kjúklingurinn sjálfur... eða hundurinn þinn."
+
+PABBA-BRANDARI: Bættu við fyndnum "fun_fact" brandara um rusl eða endurvinnslu.
+
 Svaraðu AÐEINS með JSON:
 {
   "item": "nafn hlutarins á íslensku",
   "bin": "paper|plastic|food|mixed|recycling_center",
   "reason": "stutt skýring á íslensku",
-  "confidence": 0.0-1.0
+  "confidence": 0.0-1.0,
+  "fun_fact": "pabba-brandari eða fyndið fact um rusl (valkvætt)"
 }`;
 
 export async function classifyWithGemini(
@@ -84,7 +93,13 @@ export async function classifyWithGemini(
       return null;
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      candidates?: Array<{
+        content?: {
+          parts?: Array<{ text?: string }>;
+        };
+      }>;
+    };
     console.log('[Gemini] Raw response:', JSON.stringify(data).substring(0, 500));
 
     // Extract text from Gemini response

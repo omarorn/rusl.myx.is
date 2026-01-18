@@ -56,6 +56,7 @@ export async function classifyItem(
       reason: geminiResult.reason,
       confidence: geminiResult.confidence,
       source: 'gemini',
+      dadJoke: geminiResult.fun_fact,  // Pass through the dad joke
     };
   }
 

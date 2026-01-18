@@ -2,6 +2,21 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git Commit Guidelines
+
+**Allar commit skilaboð á ÍSLENSKU:**
+```bash
+# Dæmi um commit skilaboð:
+git commit -m "Bætti við yfirferðarkerfi með Gemini Pro"
+git commit -m "Lagaði villu með localStorage á farsímum"
+git commit -m "Uppfærði flokkunarreglur fyrir Akureyri"
+```
+
+**Format:**
+- Stutt og hnitmiðað (50 stafir eða minna)
+- Notaðu sagnir í þátíð: "Bætti við", "Lagaði", "Uppfærði", "Fjarlægði"
+- Ekki nota punkta í lokin
+
 ## Development Commands
 
 ```bash
@@ -19,28 +34,49 @@ npx wrangler d1 execute trash-myx-db --remote --file=./migrations/0001_init.sql 
 # Secrets
 wrangler secret put HF_API_KEY
 wrangler secret put GEMINI_API_KEY
+wrangler secret put CLAUDE_API_KEY  # Optional for deep review
 ```
 
 ## Architecture
 
 **Classification Flow:**
 ```
-Image (base64) → HuggingFace API → Confidence ≥80% → Iceland Rules → Response
-                                 ↘ Confidence <80% → Gemini Fallback → Response
+Image (base64) → Gemini 2.0 Flash → Iceland Rules → Response
+                        ↓
+            [Hourly] Post-Processing Review (Gemini Pro)
+                        ↓
+                 Update DB with refined results
 ```
 
 **Key Files:**
-- `src/index.ts` — Hono app entry, route mounting, CORS
+- `src/index.ts` — Hono app entry, route mounting, CORS, cron handler
 - `src/routes/identify.ts` — Main classification endpoint with rate limiting
-- `src/services/classifier.ts` — Orchestrates HF → Gemini fallback logic
+- `src/routes/review.ts` — Review stats and manual trigger endpoint
+- `src/services/classifier.ts` — Orchestrates classification logic
 - `src/services/iceland-rules.ts` — **CRITICAL** bin mapping and overrides
-- `src/services/huggingface.ts` — HuggingFace Inference API client
-- `src/services/gemini.ts` — Gemini 2.0 Flash-Lite fallback client
+- `src/services/gemini.ts` — Gemini 2.0 Flash primary classifier
+- `src/services/review.ts` — Hourly post-processing with Gemini Pro
+- `src/data/regions.ts` — Regional waste rules documentation
 
 **Cloudflare Bindings:**
-- `DB` (D1) — Scans, users, fun_facts tables
+- `DB` (D1) — Scans, users, quiz_images, review_log tables
 - `CACHE` (KV) — Rate limiting (`ratelimit:{ip}`)
-- `IMAGES` (R2) — Debug image storage (disabled by default)
+- `IMAGES` (R2) — Image storage for quiz and review
+
+**Cron Trigger:**
+- Runs every hour (`0 * * * *`)
+- Reviews low-confidence classifications with Gemini Pro
+- Updates DB with refined results
+
+## MCP & Plugin Integration
+
+**Available MCP Tools:**
+- `greptile` — Code review and PR analysis
+- `claude-in-chrome` — Browser automation for testing
+
+**Useful Plugins:**
+- `huggingface-skills` — HuggingFace Hub operations (download models, datasets)
+- `cloudflare-troubleshooting` — Investigate Cloudflare issues
 
 ## Critical Business Rules
 
@@ -74,7 +110,7 @@ return c.json({ error: 'Of margar fyrirspurnir. Reyndu aftur eftir mínútu.' },
 return c.json({ error: 'Mynd vantar.' }, 400);
 ```
 
-**Rate Limiting:** 30 requests/minute per IP, stored in KV with 60s TTL.
+**Rate Limiting:** 100 requests/minute per IP, stored in KV with 60s TTL.
 
 ## Bin Types
 

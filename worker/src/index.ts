@@ -30,6 +30,7 @@ app.get('/api', (c) => {
       'GET /api/stats',
       'GET /api/stats/leaderboard',
       'GET /api/stats/global',
+      'GET /api/stats/recent',
       'GET /api/rules',
       'GET /api/rules/:sveitarfelag',
       'GET /api/quiz/random',
@@ -62,8 +63,8 @@ app.notFound((c) => {
   if (c.req.path.startsWith('/api')) {
     return c.json({ error: 'Slóð finnst ekki' }, 404);
   }
-  // Let static assets handle non-API routes
-  return c.notFound();
+  // For non-API routes, return simple 404 (static assets are handled by Cloudflare)
+  return new Response('Not found', { status: 404 });
 });
 
 // Error handler

@@ -277,6 +277,7 @@ identify.post('/', async (c) => {
       points,
       streak: stats.current_streak,
       funFact: funFact || undefined,
+      dadJoke: result.dadJoke || undefined,
       imageKey: imageKey || undefined,
     });
   } catch (err) {

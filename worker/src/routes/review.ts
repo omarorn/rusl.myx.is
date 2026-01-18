@@ -54,40 +54,11 @@ app.get('/changes', async (c) => {
 app.post('/trigger', async (c) => {
   console.log('[Review] Manual trigger requested');
 
-  // Debug: check what the query returns
-  const unreviewed = await c.env.DB.prepare(`
-    SELECT id, image_key, item, bin, confidence
-    FROM scans
-    WHERE reviewed_at IS NULL
-      AND image_key IS NOT NULL
-      AND confidence < 0.9
-      AND created_at > unixepoch() - 86400
-    ORDER BY confidence ASC
-    LIMIT 3
-  `).all();
-
-  const debugInfo = {
-    queryResults: unreviewed.results?.length || 0,
-    firstItem: unreviewed.results?.[0] || null,
-  };
-
-  // Test getting first image
-  if (unreviewed.results && unreviewed.results.length > 0) {
-    const firstImageKey = unreviewed.results[0].image_key as string;
-    const imageObj = await c.env.IMAGES.get(firstImageKey);
-    (debugInfo as Record<string, unknown>).imageFound = !!imageObj;
-    if (imageObj) {
-      const buffer = await imageObj.arrayBuffer();
-      (debugInfo as Record<string, unknown>).imageSize = buffer.byteLength;
-    }
-  }
-
   const stats = await runPostProcessingReview(c.env);
 
   return c.json({
     success: true,
     stats,
-    debug: debugInfo,
   });
 });
 

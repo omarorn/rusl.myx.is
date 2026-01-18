@@ -6,6 +6,7 @@ export interface Env {
   AI: Ai;
   HF_API_KEY: string;
   GEMINI_API_KEY: string;
+  CLAUDE_API_KEY?: string;  // Optional for deep review
   ENVIRONMENT: string;
   DEBUG_IMAGES: string;
 }
@@ -22,6 +23,7 @@ export interface GeminiResponse {
   bin: string;
   reason: string;
   confidence: number;
+  fun_fact?: string;  // Dad joke or fun fact
 }
 
 // Final classification result
@@ -32,10 +34,14 @@ export interface ClassificationResult {
   reason: string;
   confidence: number;
   source: 'huggingface' | 'gemini';
+  dadJoke?: string;  // AI-generated dad joke
 }
 
 // Bin types for Iceland
 export type BinType = 'paper' | 'plastic' | 'food' | 'mixed' | 'recycling_center';
+
+// Municipality types
+export type Municipality = 'reykjavik' | 'kopavogur' | 'hafnarfjordur' | 'gardabaer' | 'akureyri' | 'other';
 
 export interface BinInfo {
   name_is: string;
@@ -60,7 +66,8 @@ export interface IdentifyResponse {
   confidence: number;
   points: number;
   streak: number;
-  funFact?: string;
+  funFact?: string;    // Random fun fact from DB
+  dadJoke?: string;    // AI-generated dad joke
   imageKey?: string;
   error?: string;
 }

@@ -47,27 +47,20 @@ export async function classifyWithCloudflareAI(
 
     console.log('[CF-AI] Calling Llama 3.2 Vision, image size:', Math.round(imageUrl.length / 1024), 'KB');
 
-    // Using Llava 1.6 - no license restrictions like Llama 3.2
-    const response = await ai.run('@cf/llava-hf/llava-1.5-7b-hf', {
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: SYSTEM_PROMPT,
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: imageUrl,
-              },
-            },
-          ],
-        },
-      ],
+    // Using Llava 1.5 with image input
+    // Convert base64 to array
+    const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, '');
+    const binaryString = atob(base64Data);
+    const imageBytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      imageBytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const response = await (ai as any).run('@cf/llava-hf/llava-1.5-7b-hf', {
+      prompt: SYSTEM_PROMPT,
+      image: Array.from(imageBytes),
       max_tokens: 256,
-      temperature: 0.1,
     });
 
     console.log('[CF-AI] Raw response:', JSON.stringify(response).substring(0, 500));
