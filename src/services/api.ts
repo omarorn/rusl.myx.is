@@ -123,7 +123,7 @@ export async function getQuizLeaderboard(mode: string = 'timed'): Promise<{ mode
   return response.json();
 }
 
-export async function deleteQuizScores(password: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteQuizScores(password: string): Promise<{ success: boolean; message?: string; error?: string }> {
   const response = await fetch(`${API_BASE}/api/quiz/scores`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
