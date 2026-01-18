@@ -6,6 +6,9 @@ import stats from './routes/stats';
 import rules from './routes/rules';
 import quiz from './routes/quiz';
 import describe from './routes/describe';
+import review from './routes/review';
+import ads from './routes/ads';
+import { runPostProcessingReview } from './services/review';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -20,7 +23,7 @@ app.use('*', cors({
 app.get('/api', (c) => {
   return c.json({
     service: 'trash.myx.is',
-    version: '1.1.0',
+    version: '1.2.0',
     status: 'ok',
     endpoints: [
       'POST /api/identify',
@@ -35,6 +38,12 @@ app.get('/api', (c) => {
       'GET /api/quiz/leaderboard',
       'GET /api/quiz/stats',
       'POST /api/describe',
+      'GET /api/review',
+      'GET /api/review/changes',
+      'POST /api/review/trigger',
+      'GET /api/ads',
+      'POST /api/ads/click',
+      'GET /api/ads/sponsors',
     ],
   });
 });
@@ -45,6 +54,8 @@ app.route('/api/stats', stats);
 app.route('/api/rules', rules);
 app.route('/api/quiz', quiz);
 app.route('/api/describe', describe);
+app.route('/api/review', review);
+app.route('/api/ads', ads);
 
 // 404 handler for API routes only
 app.notFound((c) => {
@@ -61,4 +72,26 @@ app.onError((err, c) => {
   return c.json({ error: 'Villa kom upp' }, 500);
 });
 
-export default app;
+// Scheduled handler for hourly post-processing review
+async function scheduled(
+  event: ScheduledEvent,
+  env: Env,
+  ctx: ExecutionContext
+): Promise<void> {
+  console.log('[Cron] Starting scheduled review at', new Date().toISOString());
+
+  ctx.waitUntil(
+    runPostProcessingReview(env)
+      .then((stats) => {
+        console.log('[Cron] Review completed:', stats);
+      })
+      .catch((error) => {
+        console.error('[Cron] Review failed:', error);
+      })
+  );
+}
+
+export default {
+  fetch: app.fetch,
+  scheduled,
+};

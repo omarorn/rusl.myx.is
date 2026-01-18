@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useCamera } from '../hooks/useCamera';
 import { identifyItem, type IdentifyResponse } from '../services/api';
+import { AdSlot } from './AdSlot';
 
 interface LogEntry {
   id: string;
@@ -216,6 +217,16 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats }: ScannerProps) {
             {currentResult.reason && (
               <p className="mt-2 text-sm opacity-90">{currentResult.reason}</p>
             )}
+          </div>
+        )}
+
+        {/* Ad slot - shows after result */}
+        {currentResult && (
+          <div className="px-3 py-2 bg-gray-800">
+            <AdSlot
+              placement="result_banner"
+              context={{ bin: currentResult.bin, item: currentResult.item }}
+            />
           </div>
         )}
 

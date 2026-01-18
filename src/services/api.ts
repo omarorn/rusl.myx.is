@@ -140,3 +140,76 @@ export async function describeImage(imageBase64: string): Promise<DescribeRespon
 }
 
 export { getUserHash };
+
+// Ads API
+export type AdPlacement = 'result_banner' | 'stats_card' | 'quiz_reward' | 'splash';
+
+export interface SponsorAd {
+  type: 'sponsor';
+  campaign_id: string;
+  sponsor: {
+    name: string;
+    name_is: string;
+    logo_url: string;
+    website_url: string;
+  };
+  creative: {
+    headline_is: string;
+    body_is?: string;
+    cta_text_is: string;
+    cta_url?: string;
+    image_url?: string;
+  };
+}
+
+export interface AdSenseAd {
+  type: 'adsense';
+  slot_id: string;
+  format: 'banner' | 'rectangle' | 'native';
+}
+
+export type Ad = SponsorAd | AdSenseAd;
+
+export interface AdResponse {
+  success: boolean;
+  ad?: Ad;
+  impression_id?: string;
+  fallback_to_adsense?: boolean;
+}
+
+export interface Sponsor {
+  id: string;
+  name: string;
+  name_is: string;
+  logo_url: string;
+  website_url: string;
+  category: string;
+}
+
+export async function getAd(placement: AdPlacement, context?: { bin?: string; item?: string }): Promise<AdResponse> {
+  const params = new URLSearchParams({
+    placement,
+    userHash: getUserHash(),
+  });
+  if (context?.bin) params.append('bin', context.bin);
+  if (context?.item) params.append('item', context.item);
+
+  const response = await fetch(`${API_BASE}/api/ads?${params}`);
+  return response.json();
+}
+
+export async function recordAdClick(impressionId: string): Promise<void> {
+  await fetch(`${API_BASE}/api/ads/click`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      impression_id: impressionId,
+      userHash: getUserHash(),
+    }),
+  });
+}
+
+export async function getSponsors(): Promise<{ success: boolean; sponsors: Sponsor[] }> {
+  const response = await fetch(`${API_BASE}/api/ads/sponsors`);
+  return response.json();
+}

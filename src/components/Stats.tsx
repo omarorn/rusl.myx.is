@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getStats, type UserStats } from '../services/api';
+import { SponsorCard } from './SponsorCard';
+import { AdSlot } from './AdSlot';
 
 interface StatsProps {
   onClose: () => void;
@@ -20,23 +22,31 @@ export function Stats({ onClose }: StatsProps) {
       </div>
 
       {stats ? (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white rounded-xl p-6 text-center shadow">
-            <div className="text-4xl font-bold text-green-600">{stats.total_scans}</div>
-            <div className="text-gray-500">Skannanir</div>
+        <div className="flex flex-col gap-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white rounded-xl p-6 text-center shadow">
+              <div className="text-4xl font-bold text-green-600">{stats.total_scans}</div>
+              <div className="text-gray-500">Skannanir</div>
+            </div>
+            <div className="bg-white rounded-xl p-6 text-center shadow">
+              <div className="text-4xl font-bold text-blue-600">{stats.total_points}</div>
+              <div className="text-gray-500">Stig</div>
+            </div>
+            <div className="bg-white rounded-xl p-6 text-center shadow">
+              <div className="text-4xl font-bold text-orange-500">{stats.current_streak}🔥</div>
+              <div className="text-gray-500">Núverandi</div>
+            </div>
+            <div className="bg-white rounded-xl p-6 text-center shadow">
+              <div className="text-4xl font-bold text-purple-600">{stats.best_streak}⭐</div>
+              <div className="text-gray-500">Besta</div>
+            </div>
           </div>
-          <div className="bg-white rounded-xl p-6 text-center shadow">
-            <div className="text-4xl font-bold text-blue-600">{stats.total_points}</div>
-            <div className="text-gray-500">Stig</div>
-          </div>
-          <div className="bg-white rounded-xl p-6 text-center shadow">
-            <div className="text-4xl font-bold text-orange-500">{stats.current_streak}🔥</div>
-            <div className="text-gray-500">Núverandi</div>
-          </div>
-          <div className="bg-white rounded-xl p-6 text-center shadow">
-            <div className="text-4xl font-bold text-purple-600">{stats.best_streak}⭐</div>
-            <div className="text-gray-500">Besta</div>
-          </div>
+
+          {/* Ad slot */}
+          <AdSlot placement="stats_card" />
+
+          {/* Sponsors */}
+          <SponsorCard />
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center">
