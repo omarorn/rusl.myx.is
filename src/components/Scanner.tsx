@@ -48,10 +48,21 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats }: ScannerProps) {
     }
   }, []);
 
-  // Save history to localStorage
+  // Save history to localStorage (without large images to save space)
   useEffect(() => {
     if (history.length > 0) {
-      localStorage.setItem('scan_history', JSON.stringify(history.slice(0, 20))); // Keep last 20
+      try {
+        // Only save last 10 items, without full images (just metadata)
+        const toSave = history.slice(0, 10).map(h => ({
+          ...h,
+          image: '', // Don't store full images - too much data
+        }));
+        localStorage.setItem('scan_history', JSON.stringify(toSave));
+      } catch (e) {
+        console.error('Failed to save history:', e);
+        // Clear history if quota exceeded
+        localStorage.removeItem('scan_history');
+      }
     }
   }, [history]);
 
@@ -77,6 +88,9 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats }: ScannerProps) {
   };
 
   const handleCapture = async () => {
+    // Prevent double-clicks while loading
+    if (isLoading) return;
+
     const image = captureImage();
     if (!image) return;
 
@@ -92,7 +106,6 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats }: ScannerProps) {
       const response = await identifyItem(image);
 
       if (response.success) {
-        addLog('Beiti íslenskum reglum...', '🇮🇸', 'pending');
         addLog(`Flokkað: ${response.item} → ${response.binInfo?.name_is}`, response.binInfo?.icon || '✅', 'success');
 
         setCurrentResult(response);
@@ -113,7 +126,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats }: ScannerProps) {
       }
     } catch (err) {
       console.error('Scan error:', err);
-      addLog('Nettenging mistókst', '❌', 'error');
+      addLog('Nettenging mistókst - reyndu aftur', '❌', 'error');
     } finally {
       setIsLoading(false);
     }

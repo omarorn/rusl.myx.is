@@ -12,6 +12,10 @@ build/
 .env.local
 .dev.vars
 
+# Claude Code local settings (may contain API tokens)
+.claude/settings.local.json
+*.local.json
+
 # IDE
 .idea/
 .vscode/

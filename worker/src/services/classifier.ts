@@ -39,35 +39,11 @@ export async function classifyItem(
   imageBase64: string,
   env: Env
 ): Promise<ClassificationResult> {
-  // Try Cloudflare AI first (fast, on-edge)
-  const cfResult = await classifyWithCloudflareAI(imageBase64, env.AI);
+  console.log('[Classifier] Starting classification, image size:', Math.round(imageBase64.length / 1024), 'KB');
 
-  // Check if result is good enough or if we should try Gemini
-  const shouldFallback = !cfResult ||
-    cfResult.confidence < 0.7 ||  // Higher threshold
-    isConfusedResponse(cfResult.item, cfResult.reason);
-
-  if (cfResult && !shouldFallback) {
-    // Check for Iceland-specific overrides
-    const override = checkOverrides(cfResult.item);
-    const bin: BinType = override || (cfResult.bin as BinType);
-
-    return {
-      item: cfResult.item,
-      bin,
-      binInfo: BIN_INFO[bin],
-      reason: cfResult.reason,
-      confidence: cfResult.confidence,
-      source: 'cloudflare',
-    };
-  }
-
-  console.log('[Classifier] Falling back to Gemini:', cfResult ?
-    `conf=${cfResult.confidence}, confused=${isConfusedResponse(cfResult.item, cfResult.reason)}` :
-    'no CF result');
-
-  // Fallback to Gemini for low confidence or CF failure
+  // Use Gemini as primary (Cloudflare AI Llama 3.2 has EU restrictions)
   const geminiResult = await classifyWithGemini(imageBase64, env.GEMINI_API_KEY);
+  console.log('[Classifier] Gemini result:', geminiResult ? `${geminiResult.item} (${geminiResult.confidence})` : 'null');
 
   if (geminiResult) {
     const override = checkOverrides(geminiResult.item);

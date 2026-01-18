@@ -4,8 +4,8 @@ import { classifyItem } from '../services/classifier';
 
 const identify = new Hono<{ Bindings: Env }>();
 
-// Rate limit: 30 requests per minute per IP
-const RATE_LIMIT = 30;
+// Rate limit: 100 requests per minute per IP (generous for testing)
+const RATE_LIMIT = 100;
 const RATE_WINDOW = 60; // seconds
 
 async function checkRateLimit(ip: string, cache: KVNamespace): Promise<boolean> {

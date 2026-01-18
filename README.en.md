@@ -1,16 +1,14 @@
-# 🗑️ rusl.myx.is — Íslensk ruslaflokkun með gervigreind
+# rusl.myx.is — Icelandic Waste Classification with AI
 
-> Greindu rusl með myndavélinni og finndu rétta tunnuna
+> Scan waste with your camera and find the right bin
 
-**[🇬🇧 English version](./README.en.md)**
-
-Tvær vörur — einn heili:
-- **📱 trash.myx.is** — PWA fyrir síma
-- **🏠 TrashPi** — Standalone IoT box fyrir heimili/skóla/fyrirtæki
+Two products — one brain:
+- **📱 trash.myx.is** — Mobile PWA
+- **🏠 TrashPi** — Standalone IoT device for homes/schools/businesses
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Worker (Backend)
 
@@ -40,7 +38,7 @@ python main.py
 
 ---
 
-## 📁 Möppuskipulag
+## Directory Structure
 
 ```
 rusl.myx.is/
@@ -71,12 +69,12 @@ rusl.myx.is/
 │   ├── main.py
 │   └── requirements.txt
 ├── CLAUDE.md               # Agent guidelines
-└── README.md               # This file
+└── README.md               # Icelandic README
 ```
 
 ---
 
-## 🏗️ Arkitektúr
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -102,9 +100,9 @@ rusl.myx.is/
 
 ---
 
-## ☁️ Cloudflare Resources
+## Cloudflare Resources
 
-| Resource | Nafn | ID |
+| Resource | Name | ID |
 |----------|------|----|
 | D1 | `trash-myx-db` | `56f8b19e-c7bb-40e1-b5f9-a47eb2d06b93` |
 | R2 | `trash-myx-images` | — |
@@ -112,16 +110,16 @@ rusl.myx.is/
 
 ---
 
-## 🎯 API Endpoints
+## API Endpoints
 
-| Method | Path | Lýsing |
-|--------|------|--------|
-| POST | `/api/identify` | Greina mynd og skila tunnu |
-| GET | `/api/stats` | Notenda tölfræði |
-| GET | `/api/stats/leaderboard` | Stigatafla |
-| GET | `/api/stats/global` | Heildar tölfræði |
-| GET | `/api/rules` | Listi yfir sveitarfélög |
-| GET | `/api/rules/:sveitarfelag` | Reglur fyrir sveitarfélag |
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/identify` | Classify image and return bin |
+| GET | `/api/stats` | User statistics |
+| GET | `/api/stats/leaderboard` | Leaderboard |
+| GET | `/api/stats/global` | Global statistics |
+| GET | `/api/rules` | List municipalities |
+| GET | `/api/rules/:municipality` | Rules for municipality |
 
 ### POST /api/identify
 
@@ -138,62 +136,63 @@ Response:
 ```json
 {
   "success": true,
-  "item": "plastflaska",
+  "item": "plastic bottle",
   "bin": "plastic",
   "binInfo": {
     "name_is": "Plastumbúðir",
+    "name_en": "Plastic packaging",
     "color": "#16a34a",
     "icon": "🧴"
   },
   "confidence": 0.94,
   "points": 15,
   "streak": 3,
-  "funFact": "Gler má endurvinna endalaust..."
+  "funFact": "Glass can be recycled endlessly..."
 }
 ```
 
 ---
 
-## 🗑️ Flokkar (SORPA kerfi)
+## Waste Categories (SORPA system)
 
-| Litur | Tunna | Dæmi |
-|-------|-------|------|
-| 🔵 | Pappír og pappi | Dagblöð, kassar, TetraPak |
-| 🟢 | Plastumbúðir + málmar | Flöskur, dósir, pokar |
-| 🟤 | Matarleifar | Matur í pappírspoka |
-| ⬜ | Blandaður úrgangur | Bleyjur, rusl |
-| 🟣 | Endurvinnslustöð | Gler, raf, föt |
-
----
-
-## ⚠️ Íslenskar reglur (mikilvægt!)
-
-**Edge cases sem krefjast sérstakrar meðhöndlunar:**
-
-| Hlutur | Réttur flokkur | Ástæða |
-|--------|----------------|--------|
-| 3D prentað (PLA/ABS/PETG) | ⬜ Blandað | Blandast ekki í hefðbundna endurvinnslu |
-| Bíóplast / lífbrjótanlegt | ⬜ Blandað | SORPA getur ekki unnið úr því |
-| TetraPak | 🔵 Pappír | Sent til Svíþjóðar |
-| Froðuplast (styrofoam) | 🟣 Stöð | Fer ekki í heimatunnu |
-| Fitugt pappakassi (pizza) | ⬜ Blandað | >2% fita spillir endurvinnslu |
+| Color | Bin | Examples |
+|-------|-----|----------|
+| 🔵 | Paper and cardboard | Newspapers, boxes, TetraPak |
+| 🟢 | Plastic packaging + metals | Bottles, cans, bags |
+| 🟤 | Food waste | Food in paper bags |
+| ⬜ | Mixed waste | Diapers, general trash |
+| 🟣 | Recycling center | Glass, electronics, clothes |
 
 ---
 
-## 💰 Kostnaður
+## Iceland-Specific Rules (Important!)
 
-| Þjónusta | Ókeypis | Kostnaður eftir |
-|----------|---------|-----------------|
-| HuggingFace | 1000 req/dag | ~$0.01/1000 |
-| Gemini Flash-Lite | 1500 req/dag | ~$0.075/1000 |
-| D1 | 5M reads/dag | $0.001/M reads |
-| Workers | 100K req/dag | $5/10M req |
+**Edge cases requiring special handling:**
 
-**Áætlaður kostnaður:** $2-5/mánuð fyrir 100K skannanir.
+| Item | Correct category | Reason |
+|------|------------------|--------|
+| 3D printed (PLA/ABS/PETG) | ⬜ Mixed | Does not mix with standard recycling |
+| Bioplastic / biodegradable | ⬜ Mixed | SORPA cannot process it |
+| TetraPak | 🔵 Paper | Shipped to Sweden |
+| Styrofoam | 🟣 Recycling center | Not for home bins |
+| Greasy pizza boxes | ⬜ Mixed | >2% fat contaminates paper recycling |
 
 ---
 
-## 🔧 Deployment
+## Cost Estimate
+
+| Service | Free tier | Cost after |
+|---------|-----------|------------|
+| HuggingFace | 1000 req/day | ~$0.01/1000 |
+| Gemini Flash-Lite | 1500 req/day | ~$0.075/1000 |
+| D1 | 5M reads/day | $0.001/M reads |
+| Workers | 100K req/day | $5/10M req |
+
+**Estimated cost:** $2-5/month for 100K scans.
+
+---
+
+## Deployment
 
 ### Worker
 
@@ -207,11 +206,11 @@ wrangler deploy
 
 ### Custom Domain
 
-1. Farðu í [Cloudflare Dashboard](https://dash.cloudflare.com)
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com)
 2. Workers → trash-myx → Settings → Triggers
 3. Add Custom Domain → `trash.myx.is`
 
-### PWA á Cloudflare Pages
+### PWA on Cloudflare Pages
 
 ```bash
 npm run build
@@ -220,18 +219,18 @@ npm run build
 
 ---
 
-## 📚 Tenglar
+## Links
 
-- [CLAUDE.md](./CLAUDE.md) — Agent leiðbeiningar
+- [CLAUDE.md](./CLAUDE.md) — Agent guidelines
 - [HuggingFace Model](https://huggingface.co/watersplash/waste-classification)
-- [SORPA](https://sorpa.is) — Flokkun á höfuðborgarsvæðinu
-- [2076.is](https://2076.is) — Þróunaraðili
+- [SORPA](https://sorpa.is) — Waste management in Reykjavik area
+- [2076.is](https://2076.is) — Developer
 
 ---
 
-## 💚 Styrktaraðilar / Sponsors
+## 💚 Sponsors
 
-Þetta verkefni er styrkt af:
+This project is supported by:
 
 <table>
   <tr>
@@ -241,7 +240,7 @@ npm run build
         <strong>Litla Gámaleigan</strong>
       </a>
       <br>
-      <sub>Gámaleiga fyrir alla</sub>
+      <sub>Container rental for everyone</sub>
     </td>
     <td align="center" width="200">
       <a href="https://2076.is">
@@ -249,28 +248,28 @@ npm run build
         <strong>2076 ehf</strong>
       </a>
       <br>
-      <sub>Við leysum vandamál með tækni</sub>
+      <sub>We solve problems with technology</sub>
     </td>
     <td align="center" width="200">
-      <em>Auglýsingapláss</em>
+      <em>Ad Space Available</em>
       <br><br>
-      <a href="mailto:omar@2076.is">Hafðu samband</a>
+      <a href="mailto:omar@2076.is">Contact us</a>
       <br>
-      <sub>Styrktu íslenska endurvinnslu</sub>
+      <sub>Support Icelandic recycling</sub>
     </td>
   </tr>
 </table>
 
-> Viltu styrkja verkefnið eða auglýsa? [Hafðu samband](mailto:omar@2076.is)
+> Want to sponsor or advertise? [Contact us](mailto:omar@2076.is)
 
 ---
 
-## 📄 Leyfi
+## License
 
 MIT © 2076 ehf
 
 ---
 
 <p align="center">
-  <sub>Þróað af <strong>2076 ehf</strong> — við leysum vandamál með tækni</sub>
+  <sub>Developed by <strong>2076 ehf</strong> — we solve problems with technology</sub>
 </p>

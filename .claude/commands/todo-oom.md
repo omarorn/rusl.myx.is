@@ -1,1 +1,0 @@
-use the agent tool to deligate the tasks from the tasks.md , update the todo.md docs along the way, make sure  to check if feture is already there or if scripts exixts before creatings , ultrathink on the plan and then exicute with the /ralph-wiggum:ralph-loop  PROMPT [--max-iterations N] [--completion-promise TEXT]

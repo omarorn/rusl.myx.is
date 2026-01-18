@@ -45,7 +45,10 @@ export async function classifyWithCloudflareAI(
       imageUrl = `data:image/jpeg;base64,${imageBase64}`;
     }
 
-    const response = await ai.run('@cf/meta/llama-3.2-11b-vision-instruct', {
+    console.log('[CF-AI] Calling Llama 3.2 Vision, image size:', Math.round(imageUrl.length / 1024), 'KB');
+
+    // Using Llava 1.6 - no license restrictions like Llama 3.2
+    const response = await ai.run('@cf/llava-hf/llava-1.5-7b-hf', {
       messages: [
         {
           role: 'user',
@@ -67,21 +70,26 @@ export async function classifyWithCloudflareAI(
       temperature: 0.1,
     });
 
+    console.log('[CF-AI] Raw response:', JSON.stringify(response).substring(0, 500));
+
     // Extract the response text
     const text = (response as { response?: string })?.response;
     if (!text) {
-      console.error('No response from Cloudflare AI');
+      console.error('[CF-AI] No response text from Cloudflare AI');
       return null;
     }
+
+    console.log('[CF-AI] Response text:', text.substring(0, 300));
 
     // Parse JSON from response (might have extra text around it)
     const jsonMatch = text.match(/\{[\s\S]*?\}/);
     if (!jsonMatch) {
-      console.error('No JSON found in response:', text);
+      console.error('[CF-AI] No JSON found in response:', text);
       return null;
     }
 
     const parsed = JSON.parse(jsonMatch[0]) as CloudflareAIResponse;
+    console.log('[CF-AI] Parsed result:', parsed.item, '→', parsed.bin, 'conf:', parsed.confidence);
 
     // Validate bin type
     const validBins = ['paper', 'plastic', 'food', 'mixed', 'recycling_center'];
@@ -91,7 +99,7 @@ export async function classifyWithCloudflareAI(
 
     return parsed;
   } catch (error) {
-    console.error('Cloudflare AI classification error:', error);
+    console.error('[CF-AI] Classification error:', error);
     return null;
   }
 }

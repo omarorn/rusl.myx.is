@@ -1,6 +1,7 @@
 import type { GeminiResponse, BinType } from '../types';
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+// Using latest Gemini 2.0 Flash with thinking capabilities
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent';
 
 const SYSTEM_PROMPT = `Þú ert sérfræðingur í ruslaflokkun á Íslandi (SORPA svæðið).
 
@@ -41,7 +42,14 @@ export async function classifyWithGemini(
   try {
     // Remove data URL prefix if present
     const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-    
+
+    console.log('[Gemini] Calling API, image size:', Math.round(imageData.length / 1024), 'KB');
+
+    if (!apiKey) {
+      console.error('[Gemini] No API key provided');
+      return null;
+    }
+
     const requestBody = {
       contents: [{
         parts: [
@@ -61,7 +69,7 @@ export async function classifyWithGemini(
         temperature: 0.1,
       },
     };
-    
+
     const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
       method: 'POST',
       headers: {
@@ -69,32 +77,50 @@ export async function classifyWithGemini(
       },
       body: JSON.stringify(requestBody),
     });
-    
+
     if (!response.ok) {
-      console.error('Gemini API error:', response.status, await response.text());
+      const errorText = await response.text();
+      console.error('[Gemini] API error:', response.status, errorText.substring(0, 300));
       return null;
     }
-    
+
     const data = await response.json();
-    
+    console.log('[Gemini] Raw response:', JSON.stringify(data).substring(0, 500));
+
     // Extract text from Gemini response
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
+      console.error('[Gemini] No text in response');
       return null;
     }
-    
-    // Parse JSON response
-    const parsed = JSON.parse(text) as GeminiResponse;
-    
+
+    console.log('[Gemini] Response text:', text.substring(0, 300));
+
+    // Parse JSON response - handle both array and object
+    let parsed: GeminiResponse;
+    const jsonData = JSON.parse(text);
+    if (Array.isArray(jsonData)) {
+      parsed = jsonData[0] as GeminiResponse;
+    } else {
+      parsed = jsonData as GeminiResponse;
+    }
+
+    if (!parsed || !parsed.item) {
+      console.error('[Gemini] Invalid parsed response:', jsonData);
+      return null;
+    }
+
+    console.log('[Gemini] Parsed result:', parsed.item, '→', parsed.bin, 'conf:', parsed.confidence);
+
     // Validate bin type
     const validBins: BinType[] = ['paper', 'plastic', 'food', 'mixed', 'recycling_center'];
     if (!validBins.includes(parsed.bin as BinType)) {
       parsed.bin = 'mixed';
     }
-    
+
     return parsed;
   } catch (error) {
-    console.error('Gemini classification error:', error);
+    console.error('[Gemini] Classification error:', error);
     return null;
   }
 }
