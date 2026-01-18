@@ -11,19 +11,33 @@ import {
 function isConfusedResponse(item: string | undefined, reason: string | undefined): boolean {
   if (!item || !reason) return true; // Missing data = confused
 
-  const confusedTerms = [
+  // Terms that indicate confusion (substring match is safe for these)
+  const confusedPhrases = [
     'óþekkt', 'unknown', 'unclear', 'óljóst', 'veit ekki',
     'cannot identify', 'not sure', 'might be', 'could be',
     'difficult to', 'hard to', 'cannot determine',
-    '3d print', '3d prent', 'pla', 'abs', 'petg' // Often misidentified
+    '3d print', '3d prent' // Multi-word phrases
   ];
+
+  // Short terms that need word boundary matching to avoid false positives
+  // e.g., "pla" should not match "display" or "plant"
+  const exactMatchTerms = ['pla', 'abs', 'petg'];
 
   const lowerItem = item.toLowerCase();
   const lowerReason = reason.toLowerCase();
+  const combined = `${lowerItem} ${lowerReason}`;
 
-  // Check for confused terms
-  for (const term of confusedTerms) {
-    if (lowerItem.includes(term) || lowerReason.includes(term)) {
+  // Check for confused phrases (substring match)
+  for (const phrase of confusedPhrases) {
+    if (combined.includes(phrase)) {
+      return true;
+    }
+  }
+
+  // Check for exact match terms using word boundaries
+  for (const term of exactMatchTerms) {
+    const wordBoundaryRegex = new RegExp(`\\b${term}\\b`, 'i');
+    if (wordBoundaryRegex.test(combined)) {
       return true;
     }
   }

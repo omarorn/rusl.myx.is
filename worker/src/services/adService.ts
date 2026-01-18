@@ -70,12 +70,13 @@ export interface AdResponse {
   fallback_to_adsense?: boolean;
 }
 
-// AdSense configuration (to be set after account approval)
+// AdSense configuration
+// Set slot_id values after AdSense account approval (format: 'ca-pub-XXXXX/YYYYY')
 const ADSENSE_CONFIG: Record<AdPlacement, { slot_id: string; format: 'banner' | 'rectangle' | 'native' } | null> = {
-  result_banner: { slot_id: 'ca-pub-XXXXXXX/YYYYYYY', format: 'banner' },
-  stats_card: { slot_id: 'ca-pub-XXXXXXX/ZZZZZZZ', format: 'rectangle' },
-  quiz_reward: null, // Rewarded ads need different setup
-  splash: null, // No AdSense for splash
+  result_banner: null, // Set to { slot_id: 'ca-pub-XXXXX/YYYYY', format: 'banner' } when ready
+  stats_card: null,    // Set to { slot_id: 'ca-pub-XXXXX/ZZZZZ', format: 'rectangle' } when ready
+  quiz_reward: null,   // Rewarded ads need different setup
+  splash: null,        // No AdSense for splash
 };
 
 /**
