@@ -240,7 +240,7 @@ export function LiveMode({ onClose }: LiveModeProps) {
           {/* Voice status indicator - Gemini TTS */}
           {!isActive && (
             <div className="mt-2 bg-blue-500/80 rounded-xl p-2 text-white text-center text-xs">
-              🔊 Gemini TTS (Kore)
+              🔊 Gemini TTS (is-IS)
             </div>
           )}
         </div>

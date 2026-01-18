@@ -3,8 +3,12 @@ import type { Env } from '../types';
 
 const describe = new Hono<{ Bindings: Env }>();
 
-// Icelandic voice for TTS
-const ICELANDIC_VOICE = 'Kore'; // Closest to Icelandic tone
+// Voice config for natural Icelandic TTS
+// Puck: Upbeat, natural voice that works well for Icelandic
+const TTS_VOICE = 'Puck';
+
+// Icelandic speech instruction prefix - guides pronunciation and style
+const TTS_PREFIX = `[Talaðu góða, skýra íslensku. Rólega og náttúrulega, eins og útvarpsmaður.]\n\n`;
 
 const DESCRIBE_PROMPT = `Þú ert aðstoðarmaður sem hjálpar blindum og sjónskertum að flokka rusl á Íslandi.
 Lýstu hlutnum á myndinni á íslensku í 2-3 stuttum setningum.
@@ -81,7 +85,7 @@ describe.post('/tts', async (c) => {
       return c.json({ error: 'Texti vantar' }, 400);
     }
 
-    // Use Gemini 2.5 Flash Preview TTS
+    // Use Gemini 2.5 Flash Preview TTS with Icelandic instructions
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${env.GEMINI_API_KEY}`,
       {
@@ -91,7 +95,7 @@ describe.post('/tts', async (c) => {
           contents: [
             {
               role: 'user',
-              parts: [{ text: text }],
+              parts: [{ text: TTS_PREFIX + text }],
             },
           ],
           generationConfig: {
@@ -100,7 +104,7 @@ describe.post('/tts', async (c) => {
             speechConfig: {
               voiceConfig: {
                 prebuiltVoiceConfig: {
-                  voiceName: ICELANDIC_VOICE,
+                  voiceName: TTS_VOICE,
                 },
               },
             },
@@ -181,7 +185,7 @@ describe.post('/speak', async (c) => {
 
     const description = ((descResponse as any)?.response || 'Gat ekki lýst myndinni.').trim();
 
-    // Step 2: Convert to speech using Gemini TTS
+    // Step 2: Convert to speech using Gemini TTS with Icelandic instructions
     const ttsResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${env.GEMINI_API_KEY}`,
       {
@@ -191,7 +195,7 @@ describe.post('/speak', async (c) => {
           contents: [
             {
               role: 'user',
-              parts: [{ text: description }],
+              parts: [{ text: TTS_PREFIX + description }],
             },
           ],
           generationConfig: {
@@ -200,7 +204,7 @@ describe.post('/speak', async (c) => {
             speechConfig: {
               voiceConfig: {
                 prebuiltVoiceConfig: {
-                  voiceName: ICELANDIC_VOICE,
+                  voiceName: TTS_VOICE,
                 },
               },
             },
