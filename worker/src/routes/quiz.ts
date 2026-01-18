@@ -213,4 +213,24 @@ quiz.get('/stats', async (c) => {
   }
 });
 
+// DELETE /api/quiz/scores - Delete all quiz scores (with password)
+quiz.delete('/scores', async (c) => {
+  const env = c.env;
+
+  try {
+    const { password } = await c.req.json<{ password: string }>();
+
+    if (password !== 'bobba') {
+      return c.json({ error: 'Rangt lykilorð' }, 403);
+    }
+
+    await env.DB.prepare('DELETE FROM quiz_scores').run();
+
+    return c.json({ success: true, message: 'Öll stig eytt' });
+  } catch (err) {
+    console.error('Quiz delete scores error:', err);
+    return c.json({ error: 'Villa við að eyða stigum' }, 500);
+  }
+});
+
 export default quiz;

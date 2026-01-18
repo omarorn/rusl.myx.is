@@ -4,6 +4,7 @@ import {
   submitQuizAnswer,
   submitQuizScore,
   getQuizLeaderboard,
+  deleteQuizScores,
   type QuizQuestion,
   type QuizAnswer,
   type QuizScore,
@@ -31,6 +32,9 @@ export function Quiz({ onClose }: QuizProps) {
   const [error, setError] = useState<string | null>(null);
   const [leaderboard, setLeaderboard] = useState<QuizScore[]>([]);
   const [streak, setStreak] = useState(0);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Load next question
   const loadQuestion = useCallback(async () => {
@@ -146,6 +150,23 @@ export function Quiz({ onClose }: QuizProps) {
     }
   }, [lives, mode, gameState]);
 
+  // Handle delete scores
+  const handleDeleteScores = async () => {
+    setDeleteError(null);
+    try {
+      const result = await deleteQuizScores(deletePassword);
+      if (result.success) {
+        setLeaderboard([]);
+        setShowDeleteDialog(false);
+        setDeletePassword('');
+      } else {
+        setDeleteError(result.error || 'Villa kom upp');
+      }
+    } catch (err) {
+      setDeleteError('Villa við að eyða stigum');
+    }
+  };
+
   // Menu screen
   if (mode === 'menu') {
     return (
@@ -218,7 +239,15 @@ export function Quiz({ onClose }: QuizProps) {
 
           {leaderboard.length > 0 && (
             <div className="bg-white rounded-2xl p-4 shadow-lg mb-6">
-              <h3 className="font-bold text-purple-800 mb-3">🏅 Stigatafla</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-purple-800">🏅 Stigatafla</h3>
+                <button
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-red-500 text-sm hover:text-red-700"
+                >
+                  🗑️ Eyða
+                </button>
+              </div>
               <div className="space-y-2">
                 {leaderboard.slice(0, 5).map((entry, i) => (
                   <div
@@ -230,6 +259,47 @@ export function Quiz({ onClose }: QuizProps) {
                     <span className="font-bold">{entry.score} stig</span>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Delete dialog */}
+          {showDeleteDialog && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+                <h3 className="font-bold text-lg mb-4">🗑️ Eyða öllum stigum?</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Sláðu inn lykilorð til að eyða öllum stigum.
+                </p>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Lykilorð"
+                  className="w-full p-3 border rounded-lg mb-3"
+                  autoFocus
+                />
+                {deleteError && (
+                  <p className="text-red-500 text-sm mb-3">{deleteError}</p>
+                )}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowDeleteDialog(false);
+                      setDeletePassword('');
+                      setDeleteError(null);
+                    }}
+                    className="flex-1 p-3 bg-gray-200 rounded-lg font-medium"
+                  >
+                    Hætta við
+                  </button>
+                  <button
+                    onClick={handleDeleteScores}
+                    className="flex-1 p-3 bg-red-500 text-white rounded-lg font-medium"
+                  >
+                    Eyða
+                  </button>
+                </div>
               </div>
             </div>
           )}
