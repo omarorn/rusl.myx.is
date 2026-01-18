@@ -5,6 +5,9 @@ import {
   submitQuizScore,
   getQuizLeaderboard,
   deleteQuizScores,
+  deleteQuizImages,
+  getQuizDuplicates,
+  deleteQuizDuplicates,
   type QuizQuestion,
   type QuizAnswer,
   type QuizScore,
@@ -35,6 +38,10 @@ export function Quiz({ onClose }: QuizProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [adminAction, setAdminAction] = useState<'scores' | 'images' | 'duplicates' | null>(null);
+  const [duplicates, setDuplicates] = useState<Array<{ item: string; bin: string; count: number }>>([]);
+  const [adminMessage, setAdminMessage] = useState<string | null>(null);
 
   // Load next question
   const loadQuestion = useCallback(async () => {
@@ -167,6 +174,44 @@ export function Quiz({ onClose }: QuizProps) {
     }
   };
 
+  // Handle admin actions
+  const handleAdminAction = async () => {
+    setDeleteError(null);
+    setAdminMessage(null);
+    try {
+      let result;
+      if (adminAction === 'scores') {
+        result = await deleteQuizScores(deletePassword);
+      } else if (adminAction === 'images') {
+        result = await deleteQuizImages(deletePassword);
+      } else if (adminAction === 'duplicates') {
+        result = await deleteQuizDuplicates(deletePassword);
+      }
+
+      if (result?.success) {
+        setAdminMessage(result.message || 'Aðgerð tókst');
+        setDeletePassword('');
+        setAdminAction(null);
+      } else {
+        setDeleteError(result?.error || 'Villa kom upp');
+      }
+    } catch (err) {
+      setDeleteError('Villa við aðgerð');
+    }
+  };
+
+  // Load duplicates
+  const loadDuplicates = async () => {
+    try {
+      const result = await getQuizDuplicates();
+      if (result.success) {
+        setDuplicates(result.duplicates);
+      }
+    } catch (err) {
+      console.error('Failed to load duplicates:', err);
+    }
+  };
+
   // Menu screen
   if (mode === 'menu') {
     return (
@@ -209,7 +254,122 @@ export function Quiz({ onClose }: QuizProps) {
             <div className="text-xl font-bold">Námshamur</div>
             <div className="text-sm opacity-80">Engin tímamörk - lærðu í þínum hraða</div>
           </button>
+
+          {/* Admin button */}
+          <button
+            onClick={() => {
+              setShowAdminPanel(true);
+              loadDuplicates();
+            }}
+            className="mt-8 text-gray-400 text-sm"
+          >
+            ⚙️ Stjórnborð
+          </button>
         </main>
+
+        {/* Admin Panel */}
+        {showAdminPanel && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-6 max-w-sm w-full max-h-[90vh] overflow-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-lg">⚙️ Stjórnborð</h3>
+                <button
+                  onClick={() => {
+                    setShowAdminPanel(false);
+                    setAdminAction(null);
+                    setDeletePassword('');
+                    setDeleteError(null);
+                    setAdminMessage(null);
+                  }}
+                  className="text-2xl text-gray-400"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {adminMessage && (
+                <div className="bg-green-100 text-green-700 p-3 rounded-lg mb-4">
+                  ✅ {adminMessage}
+                </div>
+              )}
+
+              {/* Duplicates info */}
+              {duplicates.length > 0 && (
+                <div className="bg-yellow-50 p-3 rounded-lg mb-4">
+                  <div className="font-medium text-yellow-800 mb-2">
+                    ⚠️ {duplicates.length} tvítekningar fundnar
+                  </div>
+                  <div className="text-xs text-yellow-700 max-h-24 overflow-auto">
+                    {duplicates.slice(0, 5).map((d, i) => (
+                      <div key={i}>{d.item} ({d.count}x)</div>
+                    ))}
+                    {duplicates.length > 5 && <div>...og {duplicates.length - 5} fleiri</div>}
+                  </div>
+                </div>
+              )}
+
+              {!adminAction ? (
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setAdminAction('duplicates')}
+                    className="w-full p-3 bg-yellow-500 text-white rounded-lg font-medium"
+                  >
+                    🔄 Eyða tvítekningum
+                  </button>
+                  <button
+                    onClick={() => setAdminAction('images')}
+                    className="w-full p-3 bg-orange-500 text-white rounded-lg font-medium"
+                  >
+                    🗑️ Eyða öllum myndum
+                  </button>
+                  <button
+                    onClick={() => setAdminAction('scores')}
+                    className="w-full p-3 bg-red-500 text-white rounded-lg font-medium"
+                  >
+                    🗑️ Eyða öllum stigum
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-gray-600 text-sm mb-3">
+                    {adminAction === 'duplicates' && 'Eyða tvíteknum myndum (heldur bestu)'}
+                    {adminAction === 'images' && 'Eyða ÖLLUM myndum úr leik'}
+                    {adminAction === 'scores' && 'Eyða ÖLLUM stigum úr stigatöflu'}
+                  </p>
+                  <input
+                    type="password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="Lykilorð"
+                    className="w-full p-3 border rounded-lg mb-3"
+                    autoFocus
+                  />
+                  {deleteError && (
+                    <p className="text-red-500 text-sm mb-3">{deleteError}</p>
+                  )}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setAdminAction(null);
+                        setDeletePassword('');
+                        setDeleteError(null);
+                      }}
+                      className="flex-1 p-3 bg-gray-200 rounded-lg font-medium"
+                    >
+                      Hætta við
+                    </button>
+                    <button
+                      onClick={handleAdminAction}
+                      className="flex-1 p-3 bg-red-500 text-white rounded-lg font-medium"
+                    >
+                      Staðfesta
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

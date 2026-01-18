@@ -269,4 +269,79 @@ quiz.delete('/images', async (c) => {
   }
 });
 
+// GET /api/quiz/duplicates - Find duplicate images by item name
+quiz.get('/duplicates', async (c) => {
+  const env = c.env;
+
+  try {
+    // Find items with multiple images
+    const duplicates = await env.DB.prepare(`
+      SELECT item, bin, COUNT(*) as count
+      FROM quiz_images
+      GROUP BY item, bin
+      HAVING COUNT(*) > 1
+      ORDER BY count DESC
+    `).all<{ item: string; bin: string; count: number }>();
+
+    return c.json({
+      success: true,
+      duplicates: duplicates.results || [],
+      total: duplicates.results?.length || 0
+    });
+  } catch (err) {
+    console.error('Quiz duplicates error:', err);
+    return c.json({ error: 'Villa við að finna tvítekningar' }, 500);
+  }
+});
+
+// DELETE /api/quiz/duplicates - Remove duplicate images, keeping one of each
+quiz.delete('/duplicates', async (c) => {
+  const env = c.env;
+
+  try {
+    const { password } = await c.req.json<{ password: string }>();
+
+    if (password !== 'bobba') {
+      return c.json({ error: 'Rangt lykilorð' }, 403);
+    }
+
+    // Find duplicates - keep the one with highest times_correct ratio
+    const toDelete = await env.DB.prepare(`
+      SELECT id, image_key FROM quiz_images
+      WHERE id NOT IN (
+        SELECT id FROM (
+          SELECT id, ROW_NUMBER() OVER (
+            PARTITION BY item, bin
+            ORDER BY
+              CASE WHEN times_shown > 0 THEN CAST(times_correct AS REAL) / times_shown ELSE 0 END DESC,
+              times_shown DESC
+          ) as rn
+          FROM quiz_images
+        ) WHERE rn = 1
+      )
+    `).all<{ id: string; image_key: string }>();
+
+    let deletedCount = 0;
+
+    // Delete from R2 and DB
+    for (const img of toDelete.results || []) {
+      try {
+        await env.IMAGES.delete(img.image_key);
+        await env.DB.prepare('DELETE FROM quiz_images WHERE id = ?').bind(img.id).run();
+        deletedCount++;
+      } catch (e) {
+        console.error('Failed to delete duplicate:', img.id, e);
+      }
+    }
+
+    return c.json({
+      success: true,
+      message: `${deletedCount} tvítekningar eyddar`
+    });
+  } catch (err) {
+    console.error('Quiz delete duplicates error:', err);
+    return c.json({ error: 'Villa við að eyða tvítekningum' }, 500);
+  }
+});
+
 export default quiz;

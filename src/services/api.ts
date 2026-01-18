@@ -132,6 +132,29 @@ export async function deleteQuizScores(password: string): Promise<{ success: boo
   return response.json();
 }
 
+export async function deleteQuizImages(password: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  const response = await fetch(`${API_BASE}/api/quiz/images`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  return response.json();
+}
+
+export async function getQuizDuplicates(): Promise<{ success: boolean; duplicates: Array<{ item: string; bin: string; count: number }>; total: number }> {
+  const response = await fetch(`${API_BASE}/api/quiz/duplicates`);
+  return response.json();
+}
+
+export async function deleteQuizDuplicates(password: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  const response = await fetch(`${API_BASE}/api/quiz/duplicates`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  return response.json();
+}
+
 // Live description API
 export interface DescribeResponse {
   success: boolean;
