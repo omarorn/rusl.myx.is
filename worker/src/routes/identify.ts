@@ -224,8 +224,14 @@ identify.post('/', async (c) => {
     // Classify the item
     const result = await classifyItem(body.image, env);
 
+    // Ensure values are not undefined (D1 doesn't accept undefined)
+    const item = result.item || 'Óþekkt hlutur';
+    const bin = result.bin || 'mixed';
+    const reason = result.reason || '';
+    const confidence = result.confidence ?? 0;
+
     // Calculate points (10 base + 5 bonus for high confidence)
-    const points = 10 + (result.confidence >= 0.9 ? 5 : 0);
+    const points = 10 + (confidence >= 0.9 ? 5 : 0);
 
     // Update user stats
     const stats = await updateUserStats(env.DB, userHash, points);
@@ -235,15 +241,15 @@ identify.post('/', async (c) => {
 
     // Save image for quiz if confidence is good (> 0.7) and item was identified
     let imageKey: string | null = null;
-    if (result.confidence >= 0.7 && result.item !== 'Óþekkt hlutur') {
+    if (confidence >= 0.7 && item !== 'Óþekkt hlutur') {
       imageKey = await saveQuizImage(
         env.IMAGES,
         env.DB,
         body.image,
-        result.item,
-        result.bin,
-        result.reason,
-        result.confidence,
+        item,
+        bin,
+        reason,
+        confidence,
         userHash
       );
     }
@@ -252,22 +258,22 @@ identify.post('/', async (c) => {
     await logScan(
       env.DB,
       userHash,
-      result.item,
-      result.bin,
-      result.confidence,
+      item,
+      bin,
+      confidence,
       'reykjavik', // TODO: detect from coords
       imageKey,
-      body.lat || null,
-      body.lng || null
+      body.lat ?? null,
+      body.lng ?? null
     );
 
     return c.json<IdentifyResponse>({
       success: true,
-      item: result.item,
-      bin: result.bin,
+      item,
+      bin,
       binInfo: result.binInfo,
-      reason: result.reason,
-      confidence: result.confidence,
+      reason,
+      confidence,
       points,
       streak: stats.current_streak,
       funFact: funFact || undefined,
