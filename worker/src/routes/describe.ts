@@ -3,6 +3,9 @@ import type { Env } from '../types';
 
 const describe = new Hono<{ Bindings: Env }>();
 
+// Icelandic voice for TTS
+const ICELANDIC_VOICE = 'Kore'; // Closest to Icelandic tone
+
 const DESCRIBE_PROMPT = `Þú ert aðstoðarmaður sem hjálpar blindum og sjónskertum að flokka rusl á Íslandi.
 Lýstu hlutnum á myndinni á íslensku í 2-3 stuttum setningum.
 
@@ -64,6 +67,181 @@ describe.post('/', async (c) => {
   } catch (err) {
     console.error('Describe error:', err);
     return c.json({ error: 'Villa við að lýsa mynd' }, 500);
+  }
+});
+
+// POST /api/describe/tts - Convert text to speech using Gemini TTS
+describe.post('/tts', async (c) => {
+  const env = c.env;
+
+  try {
+    const { text } = await c.req.json<{ text: string }>();
+
+    if (!text) {
+      return c.json({ error: 'Texti vantar' }, 400);
+    }
+
+    // Use Gemini 2.5 Flash Preview TTS
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: text }],
+            },
+          ],
+          generationConfig: {
+            temperature: 1,
+            responseModalities: ['audio'],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: ICELANDIC_VOICE,
+                },
+              },
+            },
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Gemini TTS error:', errorText);
+      return c.json({ error: 'Villa við talgervil' }, 500);
+    }
+
+    const result = await response.json() as {
+      candidates?: Array<{
+        content?: {
+          parts?: Array<{
+            inlineData?: {
+              mimeType: string;
+              data: string;
+            };
+          }>;
+        };
+      }>;
+    };
+
+    const audioData = result.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+
+    if (!audioData) {
+      console.error('No audio data in response:', JSON.stringify(result).slice(0, 500));
+      return c.json({ error: 'Ekkert hljóð búið til' }, 500);
+    }
+
+    // Return the audio as base64 with mime type
+    return c.json({
+      success: true,
+      audio: audioData.data,
+      mimeType: audioData.mimeType,
+    });
+  } catch (err) {
+    console.error('TTS error:', err);
+    return c.json({ error: 'Villa við talgervil' }, 500);
+  }
+});
+
+// POST /api/describe/speak - Describe image and return audio (combined endpoint)
+describe.post('/speak', async (c) => {
+  const env = c.env;
+
+  try {
+    const { image } = await c.req.json<{ image: string }>();
+
+    if (!image) {
+      return c.json({ error: 'Mynd vantar' }, 400);
+    }
+
+    // Extract base64 data
+    const base64Match = image.match(/^data:image\/\w+;base64,(.+)$/);
+    const imageData = base64Match ? base64Match[1] : image;
+    const mimeType = image.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+    const dataUrl = `data:${mimeType};base64,${imageData}`;
+
+    // Step 1: Get description from Cloudflare AI
+    const descResponse = await env.AI.run('@cf/meta/llama-3.2-11b-vision-instruct', {
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: DESCRIBE_PROMPT },
+            { type: 'image_url', image_url: { url: dataUrl } },
+          ],
+        },
+      ],
+      max_tokens: 100,
+      temperature: 0.3,
+    });
+
+    const description = ((descResponse as any)?.response || 'Gat ekki lýst myndinni.').trim();
+
+    // Step 2: Convert to speech using Gemini TTS
+    const ttsResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: description }],
+            },
+          ],
+          generationConfig: {
+            temperature: 1,
+            responseModalities: ['audio'],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: ICELANDIC_VOICE,
+                },
+              },
+            },
+          },
+        }),
+      }
+    );
+
+    let audioData = null;
+    let audioMimeType = 'audio/wav';
+
+    if (ttsResponse.ok) {
+      const ttsResult = await ttsResponse.json() as {
+        candidates?: Array<{
+          content?: {
+            parts?: Array<{
+              inlineData?: {
+                mimeType: string;
+                data: string;
+              };
+            }>;
+          };
+        }>;
+      };
+
+      const audio = ttsResult.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+      if (audio) {
+        audioData = audio.data;
+        audioMimeType = audio.mimeType;
+      }
+    }
+
+    return c.json({
+      success: true,
+      description,
+      audio: audioData,
+      mimeType: audioMimeType,
+    });
+  } catch (err) {
+    console.error('Speak error:', err);
+    return c.json({ error: 'Villa við að lýsa og tala' }, 500);
   }
 });
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { describeImage } from '../services/api';
+import { speakImage, textToSpeech } from '../services/api';
 
 interface LiveModeProps {
   onClose: () => void;
@@ -13,8 +13,9 @@ export function LiveMode({ onClose }: LiveModeProps) {
   const [currentDescription, setCurrentDescription] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speechReady, setSpeechReady] = useState(true); // Gemini TTS is always ready
   const intervalRef = useRef<number | null>(null);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Initialize camera
   useEffect(() => {
@@ -44,36 +45,76 @@ export function LiveMode({ onClose }: LiveModeProps) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
-      window.speechSynthesis.cancel();
+      // Stop any playing audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     };
   }, []);
 
-  // Speak text using Web Speech API
-  const speak = useCallback((text: string) => {
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'is-IS'; // Icelandic
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-
-    // Try to find Icelandic voice, fallback to default
-    const voices = window.speechSynthesis.getVoices();
-    const icelandicVoice = voices.find(v => v.lang.startsWith('is'));
-    if (icelandicVoice) {
-      utterance.voice = icelandicVoice;
+  // Play base64 audio from Gemini TTS
+  const playAudio = useCallback((audioBase64: string, mimeType: string = 'audio/wav') => {
+    // Stop any currently playing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
     }
 
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
+    try {
+      // Create audio element from base64 data
+      const audio = new Audio(`data:${mimeType};base64,${audioBase64}`);
+      audioRef.current = audio;
 
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
+      audio.onplay = () => {
+        console.log('[TTS] Started playing');
+        setIsSpeaking(true);
+      };
+
+      audio.onended = () => {
+        console.log('[TTS] Finished playing');
+        setIsSpeaking(false);
+        audioRef.current = null;
+      };
+
+      audio.onerror = (e) => {
+        console.error('[TTS] Audio error:', e);
+        setIsSpeaking(false);
+        audioRef.current = null;
+      };
+
+      audio.play().catch(err => {
+        console.error('[TTS] Play error:', err);
+        setError('Gat ekki spilað hljóð - ýttu á skjáinn til að virkja');
+        setIsSpeaking(false);
+      });
+    } catch (err) {
+      console.error('[TTS] Error creating audio:', err);
+      setIsSpeaking(false);
+    }
   }, []);
 
-  // Capture frame and get description
+  // Speak text using Gemini TTS API
+  const speak = useCallback(async (text: string) => {
+    try {
+      setIsSpeaking(true);
+      console.log('[TTS] Requesting speech for:', text);
+
+      const response = await textToSpeech(text);
+
+      if (response.success && response.audio) {
+        playAudio(response.audio, response.mimeType || 'audio/wav');
+      } else {
+        console.error('[TTS] Failed:', response.error);
+        setIsSpeaking(false);
+      }
+    } catch (err) {
+      console.error('[TTS] Error:', err);
+      setIsSpeaking(false);
+    }
+  }, [playAudio]);
+
+  // Capture frame, get description and audio from Gemini TTS
   const captureAndDescribe = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current || isSpeaking) return;
 
@@ -92,18 +133,39 @@ export function LiveMode({ onClose }: LiveModeProps) {
 
     try {
       setIsListening(true);
-      const response = await describeImage(imageData);
+      // Use combined endpoint: describe + TTS in one call
+      const response = await speakImage(imageData);
       setIsListening(false);
 
       if (response.success && response.description) {
         setCurrentDescription(response.description);
-        speak(response.description);
+
+        // Play audio if available
+        if (response.audio) {
+          playAudio(response.audio, response.mimeType || 'audio/wav');
+        }
+      } else if (response.error) {
+        console.error('Speak error:', response.error);
       }
     } catch (err) {
       console.error('Describe error:', err);
       setIsListening(false);
     }
-  }, [speak, isSpeaking]);
+  }, [playAudio, isSpeaking]);
+
+  // Stop any playing audio
+  const stopAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setIsSpeaking(false);
+  }, []);
+
+  // Test speech to enable audio on user interaction
+  const testSpeech = () => {
+    speak('Hæ! Ég er tilbúin.');
+  };
 
   // Toggle live mode
   const toggleActive = () => {
@@ -114,14 +176,14 @@ export function LiveMode({ onClose }: LiveModeProps) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
+      stopAudio();
     } else {
-      // Start
+      // Start - first speak to ensure audio is enabled
+      speak('Byrja að greina');
       setIsActive(true);
-      // Capture immediately, then every 4 seconds
-      captureAndDescribe();
-      intervalRef.current = window.setInterval(captureAndDescribe, 4000);
+      // Capture immediately, then every 5 seconds (adjusted for TTS latency)
+      setTimeout(() => captureAndDescribe(), 2000); // Wait for intro speech
+      intervalRef.current = window.setInterval(captureAndDescribe, 5000);
     }
   };
 
@@ -175,6 +237,12 @@ export function LiveMode({ onClose }: LiveModeProps) {
               <span>Ýttu á hnapp til að byrja</span>
             )}
           </div>
+          {/* Voice status indicator - Gemini TTS */}
+          {!isActive && (
+            <div className="mt-2 bg-blue-500/80 rounded-xl p-2 text-white text-center text-xs">
+              🔊 Gemini TTS (Kore)
+            </div>
+          )}
         </div>
 
         {/* Current description */}
@@ -198,6 +266,16 @@ export function LiveMode({ onClose }: LiveModeProps) {
       {/* Controls */}
       <div className="safe-bottom bg-gray-900 p-6">
         <div className="flex gap-4 justify-center">
+          {/* Test audio button */}
+          <button
+            onClick={testSpeech}
+            disabled={isActive || !speechReady}
+            className="w-16 h-16 rounded-full bg-purple-500 text-white text-2xl flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50"
+            title="Prófa hljóð"
+          >
+            🔊
+          </button>
+
           {/* Manual capture button */}
           <button
             onClick={manualCapture}
@@ -221,10 +299,7 @@ export function LiveMode({ onClose }: LiveModeProps) {
 
           {/* Stop speaking button */}
           <button
-            onClick={() => {
-              window.speechSynthesis.cancel();
-              setIsSpeaking(false);
-            }}
+            onClick={stopAudio}
             disabled={!isSpeaking}
             className="w-16 h-16 rounded-full bg-orange-500 text-white text-2xl flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50"
           >
@@ -234,8 +309,8 @@ export function LiveMode({ onClose }: LiveModeProps) {
 
         <p className="text-center text-gray-400 text-sm mt-4">
           {isActive
-            ? 'Lýsing á 4 sekúndna fresti • Ýttu á rauða hnappinn til að stoppa'
-            : 'Grænn hnappur: Byrja sjálfvirka lýsingu • Blár: Stök lýsing'}
+            ? 'Lýsing á 5 sekúndna fresti • Ýttu á rauða hnappinn til að stoppa'
+            : '🔊 Prófa hljóð • 📷 Stök lýsing • ▶️ Sjálfvirk lýsing'}
         </p>
       </div>
     </div>

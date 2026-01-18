@@ -1,10 +1,13 @@
 import type { BinType, BinInfo } from '../types';
+import { REGIONS, DEFAULT_REGION, getRegionByMunicipality, type RegionInfo } from '../data/regions';
+
+export type Language = 'is' | 'en';
 
 // HuggingFace model labels → Icelandic bin mapping
 export const HF_LABEL_TO_BIN: Record<string, BinType> = {
   'cardboard': 'paper',
-  'glass': 'recycling_center',  // Glass goes to recycling centers in Iceland
-  'metal': 'plastic',           // Metal goes with plastic in SORPA system
+  'glass': 'recycling_center',
+  'metal': 'plastic',
   'paper': 'paper',
   'plastic': 'plastic',
   'trash': 'mixed',
@@ -19,35 +22,24 @@ export const HF_LABEL_TO_BIN: Record<string, BinType> = {
 
 // Items that ALWAYS go to specific bins regardless of model output
 export const ICELAND_OVERRIDES: Record<string, BinType> = {
-  // 3D printed plastics → ALWAYS mixed waste
   'pla': 'mixed',
   'abs': 'mixed',
   'petg': 'mixed',
   '3d printed': 'mixed',
   '3d print': 'mixed',
-  
-  // Bioplastics → Mixed (SORPA cannot process)
   'bioplastic': 'mixed',
   'compostable plastic': 'mixed',
   'biodegradable': 'mixed',
-  
-  // Special cases
   'tetrapak': 'paper',
   'tetra pak': 'paper',
   'milk carton': 'paper',
   'juice carton': 'paper',
-  
-  // Foam → Recycling center only
   'styrofoam': 'recycling_center',
   'foam': 'recycling_center',
   'polystyrene': 'recycling_center',
-
-  // Contaminated → Mixed
   'greasy cardboard': 'mixed',
-  'pizza box': 'mixed',  // Usually contaminated
+  'pizza box': 'mixed',
   'dirty paper': 'mixed',
-
-  // Large metal items → Recycling center (not green bin)
   'bronze': 'recycling_center',
   'brass': 'recycling_center',
   'copper': 'recycling_center',
@@ -55,41 +47,56 @@ export const ICELAND_OVERRIDES: Record<string, BinType> = {
   'steel frame': 'recycling_center',
   'metal frame': 'recycling_center',
   'picture frame': 'recycling_center',
-  'rammi': 'recycling_center',  // Icelandic for frame
+  'rammi': 'recycling_center',
   'málmrammi': 'recycling_center',
   'járn': 'recycling_center',
   'kopar': 'recycling_center',
-  'eir': 'recycling_center',  // Bronze/brass in Icelandic
+  'eir': 'recycling_center',
 };
 
-// Bin information for UI
+// Get bin info from regions.ts based on region and language
+export function getBinInfoForRegion(
+  bin: BinType,
+  regionId: string = DEFAULT_REGION,
+  lang: Language = 'is'
+): BinInfo {
+  const region = REGIONS[regionId] || REGIONS[DEFAULT_REGION];
+  const binData = region.bins[bin];
+
+  return {
+    name_is: lang === 'en' ? binData.name_en : binData.name_is,
+    color: binData.color,
+    icon: binData.icon,
+  };
+}
+
+// Legacy BIN_INFO for backwards compatibility (uses default SORPA region)
 export const BIN_INFO: Record<BinType, BinInfo> = {
-  paper: {
-    name_is: 'Pappír og pappi',
-    color: '#2563eb',
-    icon: '📄',
-  },
-  plastic: {
-    name_is: 'Plast- og málmumbúðir',
-    color: '#16a34a',
-    icon: '🧴',
-  },
-  food: {
-    name_is: 'Matarleifar',
-    color: '#92400e',
-    icon: '🍎',
-  },
-  mixed: {
-    name_is: 'Blandaður úrgangur',
-    color: '#6b7280',
-    icon: '🗑️',
-  },
-  recycling_center: {
-    name_is: 'Endurvinnslustöð',
-    color: '#7c3aed',
-    icon: '♻️',
-  },
+  paper: { name_is: 'Pappír og pappi', color: '#2563eb', icon: '📄' },
+  plastic: { name_is: 'Plast- og málmumbúðir', color: '#16a34a', icon: '🧴' },
+  food: { name_is: 'Matarleifar', color: '#92400e', icon: '🍎' },
+  mixed: { name_is: 'Blandaður úrgangur', color: '#6b7280', icon: '🗑️' },
+  recycling_center: { name_is: 'Endurvinnslustöð', color: '#7c3aed', icon: '♻️' },
 };
+
+// Get all bin info for a region
+export function getAllBinInfoForRegion(
+  regionId: string = DEFAULT_REGION,
+  lang: Language = 'is'
+): Record<BinType, BinInfo> {
+  const bins: BinType[] = ['paper', 'plastic', 'food', 'mixed', 'recycling_center'];
+  const result: Record<BinType, BinInfo> = {} as Record<BinType, BinInfo>;
+
+  for (const bin of bins) {
+    result[bin] = getBinInfoForRegion(bin, regionId, lang);
+  }
+
+  return result;
+}
+
+// Export region helpers
+export { REGIONS, DEFAULT_REGION, getRegionByMunicipality };
+export type { RegionInfo };
 
 // Check if item text contains any override keywords
 export function checkOverrides(itemText: string | undefined | null): BinType | null {

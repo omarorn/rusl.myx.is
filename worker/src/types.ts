@@ -49,12 +49,17 @@ export interface BinInfo {
   icon: string;
 }
 
+// Language type
+export type Language = 'is' | 'en';
+
 // API Request/Response
 export interface IdentifyRequest {
   image: string;  // base64
   lat?: number;
   lng?: number;
   userHash?: string;
+  language?: Language;  // Default: 'is'
+  region?: string;      // Default: 'sorpa'
 }
 
 export interface IdentifyResponse {

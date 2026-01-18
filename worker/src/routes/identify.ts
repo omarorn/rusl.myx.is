@@ -220,9 +220,11 @@ identify.post('/', async (c) => {
   try {
     // Generate user hash if not provided
     const userHash = body.userHash || `anon_${ip.replace(/\./g, '_')}`;
+    const language = body.language || 'is';
+    const region = body.region || 'sorpa';
 
     // Classify the item
-    const result = await classifyItem(body.image, env);
+    const result = await classifyItem(body.image, env, language, region);
 
     // Ensure values are not undefined (D1 doesn't accept undefined)
     const item = result.item || 'Óþekkt hlutur';

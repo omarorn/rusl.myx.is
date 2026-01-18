@@ -39,13 +39,31 @@ function getUserHash(): string {
   return hash;
 }
 
+export type Language = 'is' | 'en';
+export type Region = 'sorpa' | 'kalka' | 'akureyri';
+
+// Get settings from localStorage
+function getSettings(): { language: Language; region: Region } {
+  try {
+    const language = (localStorage.getItem('rusl_language') || 'is') as Language;
+    const region = (localStorage.getItem('rusl_region') || 'sorpa') as Region;
+    return { language, region };
+  } catch {
+    return { language: 'is', region: 'sorpa' };
+  }
+}
+
 export async function identifyItem(imageBase64: string): Promise<IdentifyResponse> {
+  const { language, region } = getSettings();
+
   const response = await fetch(`${API_BASE}/api/identify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       image: imageBase64,
       userHash: getUserHash(),
+      language,
+      region,
     }),
   });
   return response.json();
@@ -162,11 +180,39 @@ export interface DescribeResponse {
   error?: string;
 }
 
+export interface SpeakResponse {
+  success: boolean;
+  description: string;
+  audio?: string; // base64 audio data
+  mimeType?: string;
+  error?: string;
+}
+
 export async function describeImage(imageBase64: string): Promise<DescribeResponse> {
   const response = await fetch(`${API_BASE}/api/describe`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ image: imageBase64 }),
+  });
+  return response.json();
+}
+
+// Combined describe + TTS using Gemini 2.5 Flash Preview TTS
+export async function speakImage(imageBase64: string): Promise<SpeakResponse> {
+  const response = await fetch(`${API_BASE}/api/describe/speak`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: imageBase64 }),
+  });
+  return response.json();
+}
+
+// Text-to-speech only using Gemini 2.5 Flash Preview TTS
+export async function textToSpeech(text: string): Promise<{ success: boolean; audio?: string; mimeType?: string; error?: string }> {
+  const response = await fetch(`${API_BASE}/api/describe/tts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
   });
   return response.json();
 }

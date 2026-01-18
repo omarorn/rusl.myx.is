@@ -1,9 +1,10 @@
-import type { Env, ClassificationResult, BinType } from '../types';
-import { classifyWithCloudflareAI } from './cloudflare-ai';
+import type { Env, ClassificationResult, BinType, Language } from '../types';
 import { classifyWithGemini } from './gemini';
 import {
   checkOverrides,
-  BIN_INFO
+  getBinInfoForRegion,
+  DEFAULT_REGION,
+  type Language as RulesLanguage,
 } from './iceland-rules';
 
 // Check if AI response seems confused/uncertain
@@ -37,9 +38,12 @@ function isConfusedResponse(item: string | undefined, reason: string | undefined
 
 export async function classifyItem(
   imageBase64: string,
-  env: Env
+  env: Env,
+  language: Language = 'is',
+  region: string = DEFAULT_REGION
 ): Promise<ClassificationResult> {
   console.log('[Classifier] Starting classification, image size:', Math.round(imageBase64.length / 1024), 'KB');
+  console.log('[Classifier] Language:', language, 'Region:', region);
 
   // Use Gemini as primary (Cloudflare AI Llama 3.2 has EU restrictions)
   const geminiResult = await classifyWithGemini(imageBase64, env.GEMINI_API_KEY);
@@ -52,20 +56,24 @@ export async function classifyItem(
     return {
       item: geminiResult.item,
       bin,
-      binInfo: BIN_INFO[bin],
+      binInfo: getBinInfoForRegion(bin, region, language as RulesLanguage),
       reason: geminiResult.reason,
       confidence: geminiResult.confidence,
       source: 'gemini',
-      dadJoke: geminiResult.fun_fact,  // Pass through the dad joke
+      dadJoke: geminiResult.fun_fact,
     };
   }
 
-  // If both fail, return safe default
+  // If classification fails, return safe default
+  const unknownReason = language === 'en'
+    ? 'Could not identify the item. When in doubt, put it in mixed waste.'
+    : 'Ekki tókst að greina hlutinn. Ef þú ert í vafa, settu í blandaðan úrgang.';
+
   return {
-    item: 'Óþekkt hlutur',
+    item: language === 'en' ? 'Unknown item' : 'Óþekkt hlutur',
     bin: 'mixed',
-    binInfo: BIN_INFO['mixed'],
-    reason: 'Ekki tókst að greina hlutinn. Ef þú ert í vafa, settu í blandaðan úrgang.',
+    binInfo: getBinInfoForRegion('mixed', region, language as RulesLanguage),
+    reason: unknownReason,
     confidence: 0,
     source: 'gemini',
   };
