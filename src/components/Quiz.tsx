@@ -42,6 +42,8 @@ export function Quiz({ onClose }: QuizProps) {
   const [adminAction, setAdminAction] = useState<'scores' | 'images' | 'duplicates' | null>(null);
   const [duplicates, setDuplicates] = useState<Array<{ item: string; bin: string; count: number }>>([]);
   const [adminMessage, setAdminMessage] = useState<string | null>(null);
+  const [feedbackTimer, setFeedbackTimer] = useState(5);
+  const [isPaused, setIsPaused] = useState(false);
 
   // Load next question
   const loadQuestion = useCallback(async () => {
@@ -96,15 +98,8 @@ export function Quiz({ onClose }: QuizProps) {
       }
 
       setGameState('feedback');
-
-      // Auto-advance in timed mode
-      if (mode === 'timed') {
-        setTimeout(() => {
-          if (timeLeft > 0) {
-            loadQuestion();
-          }
-        }, 1500);
-      }
+      setFeedbackTimer(5);
+      setIsPaused(false);
     } catch (err) {
       setError('Villa við að skrá svar');
     } finally {
@@ -156,6 +151,29 @@ export function Quiz({ onClose }: QuizProps) {
       setTimeout(endGame, 2000);
     }
   }, [lives, mode, gameState]);
+
+  // Auto-advance timer for feedback state
+  useEffect(() => {
+    if (gameState !== 'feedback' || isPaused) return;
+    if (mode === 'survival' && lives <= 0) return; // Don't auto-advance on game over
+
+    const timer = setInterval(() => {
+      setFeedbackTimer(prev => {
+        if (prev <= 1) {
+          // Auto-advance
+          if (mode === 'timed' && timeLeft <= 0) {
+            endGame();
+          } else {
+            loadQuestion();
+          }
+          return 5;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [gameState, isPaused, mode, lives, timeLeft, loadQuestion]);
 
   // Handle delete scores
   const handleDeleteScores = async () => {
@@ -574,9 +592,12 @@ export function Quiz({ onClose }: QuizProps) {
 
           {/* Feedback overlay */}
           {gameState === 'feedback' && answer && (
-            <div className={`absolute inset-0 flex items-center justify-center ${
-              answer.correct ? 'bg-green-500/80' : 'bg-red-500/80'
-            }`}>
+            <div
+              className={`absolute inset-0 flex items-center justify-center ${
+                answer.correct ? 'bg-green-500/80' : 'bg-red-500/80'
+              }`}
+              onClick={() => setIsPaused(!isPaused)}
+            >
               <div className="text-center text-white p-6">
                 <div className="text-6xl mb-4">{answer.correct ? '✅' : '❌'}</div>
                 <div className="text-2xl font-bold mb-2">{answer.item}</div>
@@ -587,6 +608,14 @@ export function Quiz({ onClose }: QuizProps) {
                 {answer.correct && (
                   <div className="mt-4 text-xl font-bold">+{answer.points} stig</div>
                 )}
+                {/* Countdown / Pause indicator */}
+                <div className="mt-4 text-sm opacity-70">
+                  {isPaused ? (
+                    <span>⏸️ Í bið - ýttu til að halda áfram</span>
+                  ) : (
+                    <span>Næsta eftir {feedbackTimer}s - ýttu til að staldra</span>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -616,13 +645,23 @@ export function Quiz({ onClose }: QuizProps) {
             </>
           )}
 
-          {gameState === 'feedback' && mode !== 'timed' && (
-            <button
-              onClick={handleContinue}
-              className="w-full bg-purple-600 text-white p-4 rounded-xl font-bold active:scale-95 transition-transform"
-            >
-              {mode === 'survival' && lives <= 0 ? 'Sjá úrslit' : 'Næsta spurning →'}
-            </button>
+          {gameState === 'feedback' && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsPaused(!isPaused)}
+                className={`flex-1 p-4 rounded-xl font-bold active:scale-95 transition-transform ${
+                  isPaused ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-800'
+                }`}
+              >
+                {isPaused ? '▶️ Halda áfram' : '⏸️ Staldra'}
+              </button>
+              <button
+                onClick={handleContinue}
+                className="flex-1 bg-purple-600 text-white p-4 rounded-xl font-bold active:scale-95 transition-transform"
+              >
+                {mode === 'survival' && lives <= 0 ? 'Sjá úrslit' : 'Næsta →'}
+              </button>
+            </div>
           )}
         </div>
       </main>

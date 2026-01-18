@@ -2,10 +2,12 @@ name = "trash-myx"
 main = "src/index.ts"
 compatibility_date = "2024-12-01"
 
-# Custom domain
+# Custom domains
 routes = [
   { pattern = "trash.myx.is", custom_domain = true }
 ]
+
+# Additional custom domain (rusl.myx.is configured in Cloudflare dashboard)
 
 # D1 Database
 [[d1_databases]]

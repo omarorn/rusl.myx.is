@@ -14,7 +14,7 @@ const app = new Hono<{ Bindings: Env }>();
 
 // CORS for PWA
 app.use('*', cors({
-  origin: ['https://trash.myx.is', 'http://localhost:3000', 'http://localhost:5173'],
+  origin: ['https://trash.myx.is', 'https://rusl.myx.is', 'http://localhost:3000', 'http://localhost:5173'],
   allowMethods: ['GET', 'POST', 'OPTIONS'],
   allowHeaders: ['Content-Type'],
 }));

@@ -70,7 +70,7 @@ export const BIN_INFO: Record<BinType, BinInfo> = {
     icon: '📄',
   },
   plastic: {
-    name_is: 'Plastumbúðir',
+    name_is: 'Plast- og málmumbúðir',
     color: '#16a34a',
     icon: '🧴',
   },
@@ -118,25 +118,32 @@ export function getReasonText(item: string | undefined | null, bin: BinType, sou
 
   // Check for special overrides
   const lowerItem = item.toLowerCase();
-  
+
   if (lowerItem.includes('3d') || lowerItem.includes('pla') || lowerItem.includes('abs')) {
     return '3D prentað plast fer í blandaðan úrgang þar sem það blandast ekki hefðbundnu plasti við endurvinnslu.';
   }
-  
+
   if (lowerItem.includes('tetrapak') || lowerItem.includes('mjólkurfernu')) {
     return 'TetraPak fer í pappírsflokkinn þó það sé úr mörgum efnum. Það er sent til Svíþjóðar til endurvinnslu.';
   }
-  
-  // Metal items
+
+  // Large metal items → Recycling center
   if (lowerItem.includes('bronze') || lowerItem.includes('brass') || lowerItem.includes('copper') ||
       lowerItem.includes('eir') || lowerItem.includes('kopar') || lowerItem.includes('rammi') ||
       lowerItem.includes('frame') || lowerItem.includes('iron') || lowerItem.includes('járn')) {
-    return 'Stórir málmhlutir og rammar fara á endurvinnslustöð. Aðeins litlar málmumbúðir (dósir, lok) fara í grænu tunnuna.';
+    return 'Stórir málmhlutir og rammar fara á endurvinnslustöð. Aðeins litlar málmumbúðir (dósir, lok) fara með plasti.';
+  }
+
+  // Small metal items → Plastic bin
+  if (bin === 'plastic' && (lowerItem.includes('dós') || lowerItem.includes('can') ||
+      lowerItem.includes('lok') || lowerItem.includes('lid') || lowerItem.includes('ál') ||
+      lowerItem.includes('alumin') || lowerItem.includes('metal') || lowerItem.includes('málm'))) {
+    return 'Málmumbúðir (t.d. dósir og málmlok) fara með plastumbúðum í endurvinnslu.';
   }
 
   if (bin === 'recycling_center') {
     return `${item} þarf að fara á endurvinnslustöð. Það er ekki hægt að setja þetta í heimatunnur.`;
   }
-  
+
   return `${item} fer í ${binInfo.name_is.toLowerCase()}.`;
 }
