@@ -7,7 +7,9 @@ import {
 } from './iceland-rules';
 
 // Check if AI response seems confused/uncertain
-function isConfusedResponse(item: string, reason: string): boolean {
+function isConfusedResponse(item: string | undefined, reason: string | undefined): boolean {
+  if (!item || !reason) return true; // Missing data = confused
+
   const confusedTerms = [
     'óþekkt', 'unknown', 'unclear', 'óljóst', 'veit ekki',
     'cannot identify', 'not sure', 'might be', 'could be',

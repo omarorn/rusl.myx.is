@@ -130,6 +130,8 @@ async function saveQuizImage(
   confidence: number,
   userHash: string
 ): Promise<string | null> {
+  if (!item) return null;
+
   try {
     // Generate filename: item_bin_timestamp.jpg
     const sanitizedItem = item.toLowerCase()

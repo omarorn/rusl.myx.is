@@ -92,7 +92,8 @@ export const BIN_INFO: Record<BinType, BinInfo> = {
 };
 
 // Check if item text contains any override keywords
-export function checkOverrides(itemText: string): BinType | null {
+export function checkOverrides(itemText: string | undefined | null): BinType | null {
+  if (!itemText) return null;
   const lowerText = itemText.toLowerCase();
   
   for (const [keyword, bin] of Object.entries(ICELAND_OVERRIDES)) {
@@ -111,9 +112,10 @@ export function mapLabelToBin(label: string): BinType {
 }
 
 // Get reason text in Icelandic
-export function getReasonText(item: string, bin: BinType, source: string): string {
+export function getReasonText(item: string | undefined | null, bin: BinType, source: string): string {
   const binInfo = BIN_INFO[bin];
-  
+  if (!item) return `Fer í ${binInfo.name_is.toLowerCase()}.`;
+
   // Check for special overrides
   const lowerItem = item.toLowerCase();
   
