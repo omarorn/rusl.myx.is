@@ -217,6 +217,17 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats }: ScannerProps) {
             {currentResult.reason && (
               <p className="mt-2 text-sm opacity-90">{currentResult.reason}</p>
             )}
+            {/* Feedback button */}
+            <button
+              onClick={() => {
+                const feedback = `Hlutur: ${currentResult.item}\nTunna: ${currentResult.binInfo?.name_is}\nÁstæða: ${currentResult.reason}`;
+                const mailtoUrl = `mailto:rusl@myx.is?subject=Rangt flokkað&body=${encodeURIComponent(feedback)}`;
+                window.open(mailtoUrl, '_blank');
+              }}
+              className="mt-3 w-full py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
+            >
+              🤔 Ég held þetta sé rangt
+            </button>
           </div>
         )}
 
