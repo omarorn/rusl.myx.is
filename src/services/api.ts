@@ -34,6 +34,7 @@ export interface IdentifyResponse {
   points: number;
   streak: number;
   funFact?: string;
+  dadJoke?: string;
   imageKey?: string;
   error?: string;
   // Multi-object detection for wide shots

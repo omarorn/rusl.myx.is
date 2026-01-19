@@ -101,6 +101,20 @@ export const translations = {
   'bin.mixed': { is: 'Blandaður úrgangur', en: 'Mixed waste' },
   'bin.recycling_center': { is: 'Endurvinnslustöð', en: 'Recycling center' },
 
+  // Desktop Landing Page
+  'desktop.subtitle': { is: 'Skannaðu rusl og lærðu rétta flokkun með gervigreind', en: 'Scan waste and learn proper sorting with AI' },
+  'desktop.feature1_title': { is: 'Skannaðu með myndavél', en: 'Scan with camera' },
+  'desktop.feature1_desc': { is: 'Taktu mynd af hvaða hlut sem er', en: 'Take a photo of any item' },
+  'desktop.feature2_title': { is: 'Gervigreind greinir', en: 'AI analyzes' },
+  'desktop.feature2_desc': { is: 'Fáðu svar á sekúndubroti', en: 'Get an answer in a split second' },
+  'desktop.feature3_title': { is: 'Rétta tunnuna', en: 'The right bin' },
+  'desktop.feature3_desc': { is: 'Samkvæmt íslenskum reglum', en: 'According to Icelandic rules' },
+  'desktop.play_game': { is: 'Spila leik', en: 'Play game' },
+  'desktop.stats': { is: 'Tölfræði', en: 'Statistics' },
+  'desktop.sponsors': { is: 'Styrktaraðilar:', en: 'Sponsors:' },
+  'desktop.joke_title': { is: 'Brandari dagsins', en: 'Joke of the day' },
+  'desktop.joke_loading': { is: 'Hleður brandara...', en: 'Loading joke...' },
+
   // Common
   'common.close': { is: 'Loka', en: 'Close' },
   'common.back': { is: 'Til baka', en: 'Back' },

@@ -146,15 +146,26 @@ export function WelcomeIntro({ onComplete }: WelcomeIntroProps) {
                   <span className="text-2xl">📊</span>
                   <span className="text-xs">Tölfræði</span>
                 </a>
-                <a
-                  href="https://litlagamaleigan.is"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => {
+                    const shareUrl = 'https://trash.myx.is/#/intro';
+                    const shareData = {
+                      title: 'Ruslaflokkun - trash.myx.is',
+                      text: 'Skannaðu rusl og lærðu rétta flokkun með gervigreind!',
+                      url: shareUrl,
+                    };
+                    if (navigator.share) {
+                      navigator.share(shareData);
+                    } else {
+                      navigator.clipboard.writeText(shareUrl);
+                      alert('Hlekkur afritaður!');
+                    }
+                  }}
                   className="flex flex-col items-center text-white/80 hover:text-white p-2"
                 >
-                  <span className="text-2xl">🚛</span>
-                  <span className="text-xs">Styrktaraðili</span>
-                </a>
+                  <span className="text-2xl">📤</span>
+                  <span className="text-xs">Deila</span>
+                </button>
               </div>
             </div>
           </div>
