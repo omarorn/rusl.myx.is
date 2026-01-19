@@ -269,4 +269,134 @@ admin.get('/stats', async (c) => {
   }
 });
 
+// GET /api/admin/sync - Compare R2 bucket with DB, find orphans
+admin.get('/sync', async (c) => {
+  if (!await checkPassword(c)) {
+    return c.json({ error: 'Rangt lykilorð' }, 403);
+  }
+
+  const env = c.env;
+
+  try {
+    // 1. List all R2 objects with quiz/ prefix
+    const r2Objects: string[] = [];
+    let cursor: string | undefined;
+
+    do {
+      const list = await env.IMAGES.list({
+        prefix: 'quiz/',
+        cursor,
+        limit: 1000,
+      });
+
+      for (const obj of list.objects) {
+        r2Objects.push(obj.key);
+      }
+
+      cursor = list.truncated ? list.cursor : undefined;
+    } while (cursor);
+
+    // 2. Get all image_keys from DB
+    const dbImages = await env.DB.prepare(
+      'SELECT id, image_key, item, bin FROM quiz_images'
+    ).all<{ id: string; image_key: string; item: string; bin: string }>();
+
+    const dbImageKeys = new Set(dbImages.results?.map(img => img.image_key) || []);
+    const r2Keys = new Set(r2Objects);
+
+    // 3. Find orphaned DB records (image_key exists in DB but not in R2)
+    const orphanedInDb = dbImages.results?.filter(img => !r2Keys.has(img.image_key)) || [];
+
+    // 4. Find orphaned R2 files (exist in R2 but not in DB)
+    const orphanedInR2 = r2Objects.filter(key => !dbImageKeys.has(key));
+
+    return c.json({
+      success: true,
+      stats: {
+        r2_total: r2Objects.length,
+        db_total: dbImages.results?.length || 0,
+        orphaned_in_db: orphanedInDb.length,
+        orphaned_in_r2: orphanedInR2.length,
+      },
+      orphanedInDb,
+      orphanedInR2,
+    });
+  } catch (err) {
+    console.error('Admin sync error:', err);
+    return c.json({ error: 'Villa við samstillingu' }, 500);
+  }
+});
+
+// POST /api/admin/sync/cleanup - Clean up orphaned records
+admin.post('/sync/cleanup', async (c) => {
+  if (!await checkPassword(c)) {
+    return c.json({ error: 'Rangt lykilorð' }, 403);
+  }
+
+  const env = c.env;
+
+  try {
+    const body = await c.req.json<{
+      cleanDb?: boolean;  // Remove DB records where R2 file is missing
+      cleanR2?: boolean;  // Remove R2 files where DB record is missing
+    }>();
+
+    // First, get the sync status
+    const r2Objects: string[] = [];
+    let cursor: string | undefined;
+
+    do {
+      const list = await env.IMAGES.list({
+        prefix: 'quiz/',
+        cursor,
+        limit: 1000,
+      });
+
+      for (const obj of list.objects) {
+        r2Objects.push(obj.key);
+      }
+
+      cursor = list.truncated ? list.cursor : undefined;
+    } while (cursor);
+
+    const dbImages = await env.DB.prepare(
+      'SELECT id, image_key FROM quiz_images'
+    ).all<{ id: string; image_key: string }>();
+
+    const dbImageKeys = new Set(dbImages.results?.map(img => img.image_key) || []);
+    const r2Keys = new Set(r2Objects);
+
+    let dbDeleted = 0;
+    let r2Deleted = 0;
+
+    // Clean orphaned DB records
+    if (body.cleanDb) {
+      const orphanedInDb = dbImages.results?.filter(img => !r2Keys.has(img.image_key)) || [];
+      for (const img of orphanedInDb) {
+        await env.DB.prepare('DELETE FROM quiz_images WHERE id = ?').bind(img.id).run();
+        dbDeleted++;
+      }
+    }
+
+    // Clean orphaned R2 files
+    if (body.cleanR2) {
+      const orphanedInR2 = r2Objects.filter(key => !dbImageKeys.has(key));
+      for (const key of orphanedInR2) {
+        await env.IMAGES.delete(key);
+        r2Deleted++;
+      }
+    }
+
+    return c.json({
+      success: true,
+      message: `Hreinsun lokið: ${dbDeleted} DB færslur, ${r2Deleted} R2 skrár`,
+      dbDeleted,
+      r2Deleted,
+    });
+  } catch (err) {
+    console.error('Admin cleanup error:', err);
+    return c.json({ error: 'Villa við hreinsun' }, 500);
+  }
+});
+
 export default admin;

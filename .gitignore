@@ -14,7 +14,17 @@ build/
 
 # Claude Code local settings (may contain API tokens)
 .claude/settings.local.json
+.claude/*.local.json
+.claude/*.local.md
+.claude/projects/
+.claude/todos/
+.claude/CLAUDE.local.md
+
+# User-specific local files
 *.local.json
+*.local.md
+*.local.yaml
+*.local.yml
 
 # IDE
 .idea/
@@ -44,4 +54,23 @@ __pycache__/
 *.pyo
 venv/
 .venv/
+
+# MCP configuration (may contain tokens)
 .mcp.json
+
+# Database backups (contain user data)
+backups/
+*.sql.backup
+backup-*.sql
+
+# Debug/temp files
+*.debug.json
+*.tmp
+.temp/
+
+# User credentials and tokens
+.secrets
+*.pem
+*.key
+credentials.json
+token.json

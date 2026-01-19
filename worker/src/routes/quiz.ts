@@ -74,7 +74,7 @@ quiz.get('/random', async (c) => {
       id: image.id,
       imageUrl,
       imageKey: image.image_key,
-      // Don't reveal the answer yet!
+      item: image.item, // Show item name in question
       options: Object.entries(BIN_INFO).map(([key, info]) => ({
         bin: key,
         name: info.name_is,

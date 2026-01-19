@@ -626,7 +626,7 @@ export function Quiz({ onClose }: QuizProps) {
           {gameState === 'playing' && question && (
             <>
               <p className="text-center text-gray-600 mb-3 font-medium">
-                Í hvaða tunnu fer þetta?
+                Í hvaða tunnu fer <span className="text-purple-700 font-bold">{question.item}</span>?
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {question.options.map((option) => (

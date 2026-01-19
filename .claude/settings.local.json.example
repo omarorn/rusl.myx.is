@@ -6,8 +6,8 @@
       "Bash(git:*)",
       "Bash(wrangler:*)",
       "Bash(curl:*)",
-      "Bash(cat:*)",
       "Bash(ls:*)",
+      "Bash(cat:*)",
       "Bash(mkdir:*)",
       "Bash(cp:*)",
       "Bash(mv:*)",
@@ -17,13 +17,15 @@
       "Bash(head:*)",
       "Bash(tail:*)",
       "Bash(echo:*)",
-      "Bash(tree:*)",
+      "Bash(chmod:*)",
       "Bash(gh:*)",
       "WebSearch",
+      "WebFetch(domain:developers.cloudflare.com)",
       "mcp__cloudflare__*",
       "mcp__github__*"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true
 }

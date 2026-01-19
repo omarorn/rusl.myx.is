@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCamera } from '../hooks/useCamera';
-import { identifyItem, type IdentifyResponse } from '../services/api';
+import { identifyItem, type IdentifyResponse, type DetectedObject } from '../services/api';
 import { AdSlot } from './AdSlot';
 
 interface LogEntry {
@@ -21,6 +21,15 @@ interface HistoryEntry {
   binColor: string;
 }
 
+// Nano banana for scale - the ultimate size reference
+const NANO_BANANA = '🍌';
+const BANANA_COMMENTS = [
+  'Bananí fyrir stærðarsamanburð',
+  'Staðlað mælibanani',
+  'Alþjóðlegt bananamælikerfi',
+  'Banani til viðmiðunar',
+];
+
 interface ScannerProps {
   onOpenQuiz: () => void;
   onOpenLive: () => void;
@@ -35,7 +44,23 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings }:
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [currentResult, setCurrentResult] = useState<IdentifyResponse | null>(null);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
+  const [showCartoon, setShowCartoon] = useState(true);  // Cartoon mode as default
+  const [showAllObjects, setShowAllObjects] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
+
+  // Apply cartoon effect to image
+  const getCartoonStyle = useCallback(() => {
+    if (!showCartoon) return {};
+    return {
+      filter: 'contrast(1.3) saturate(1.4) brightness(1.1)',
+      borderRadius: '16px',
+    };
+  }, [showCartoon]);
+
+  // Get random banana comment
+  const getBananaComment = useCallback(() => {
+    return BANANA_COMMENTS[Math.floor(Math.random() * BANANA_COMMENTS.length)];
+  }, []);
 
   // Load history from localStorage
   useEffect(() => {
@@ -201,24 +226,104 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings }:
             className="p-4 text-white"
             style={{ backgroundColor: currentResult.binInfo?.color || '#6b7280' }}
           >
-            <div className="flex items-center gap-4">
+            {/* Image with cartoon effect and nano banana */}
+            <div className="flex items-start gap-4 mb-3">
               {currentImage && (
-                <img src={currentImage} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                <div className="relative flex-shrink-0">
+                  <img
+                    src={currentImage}
+                    alt=""
+                    className="w-20 h-20 object-cover shadow-lg"
+                    style={getCartoonStyle()}
+                  />
+                  {/* Nano banana for scale */}
+                  {showCartoon && (
+                    <div
+                      className="absolute -bottom-1 -right-1 text-2xl drop-shadow-lg animate-bounce"
+                      title={getBananaComment()}
+                    >
+                      {NANO_BANANA}
+                    </div>
+                  )}
+                  {/* Toggle button */}
+                  <button
+                    onClick={() => setShowCartoon(!showCartoon)}
+                    className="absolute -top-1 -left-1 w-6 h-6 bg-black/50 rounded-full text-xs flex items-center justify-center"
+                    title={showCartoon ? 'Sýna frummynd' : 'Sýna cartoon'}
+                  >
+                    {showCartoon ? '📷' : '🎨'}
+                  </button>
+                </div>
               )}
-              <div className="flex-1">
-                <div className="text-2xl font-bold flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="text-2xl font-bold flex items-center gap-2 flex-wrap">
                   {currentResult.binInfo?.icon} {currentResult.item}
                 </div>
                 <div className="opacity-90">→ {currentResult.binInfo?.name_is}</div>
+                {currentResult.confidence && (
+                  <div className="text-xs opacity-70 mt-1">
+                    {Math.round(currentResult.confidence * 100)}% viss
+                  </div>
+                )}
               </div>
-              <div className="text-right">
+              <div className="text-right flex-shrink-0">
                 <div className="text-xl font-bold">+{currentResult.points}</div>
                 <div className="text-sm opacity-80">stig</div>
               </div>
             </div>
+
             {currentResult.reason && (
-              <p className="mt-2 text-sm opacity-90">{currentResult.reason}</p>
+              <p className="text-sm opacity-90 mb-2">{currentResult.reason}</p>
             )}
+
+            {/* Dad joke / fun fact */}
+            {(currentResult.funFact || currentResult.dadJoke) && (
+              <div className="bg-white/10 rounded-lg p-2 mb-2 text-sm">
+                <span className="opacity-70">💡 </span>
+                {currentResult.dadJoke || currentResult.funFact}
+              </div>
+            )}
+
+            {/* Funny comments for non-trash objects */}
+            {currentResult.funnyComments && currentResult.funnyComments.length > 0 && (
+              <div className="bg-yellow-500/20 rounded-lg p-2 mb-2">
+                <div className="text-xs font-bold mb-1 opacity-80">😄 Grín á myndinni:</div>
+                {currentResult.funnyComments.map((comment, i) => (
+                  <p key={i} className="text-sm">{comment}</p>
+                ))}
+              </div>
+            )}
+
+            {/* Multi-object detection for wide shots */}
+            {currentResult.isWideShot && currentResult.allObjects && currentResult.allObjects.length > 1 && (
+              <div className="mb-2">
+                <button
+                  onClick={() => setShowAllObjects(!showAllObjects)}
+                  className="w-full py-1 bg-white/10 hover:bg-white/20 rounded text-sm"
+                >
+                  {showAllObjects ? '▲' : '▼'} {currentResult.allObjects.length} hlutir greindir
+                </button>
+                {showAllObjects && (
+                  <div className="mt-2 space-y-1">
+                    {currentResult.allObjects.map((obj, i) => (
+                      <div
+                        key={i}
+                        className={`p-2 rounded text-sm ${obj.is_trash ? 'bg-white/10' : 'bg-white/5 opacity-70'}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>{obj.is_trash ? '🗑️' : '👀'} {obj.item}</span>
+                          <span className="text-xs opacity-70">{obj.bin}</span>
+                        </div>
+                        {obj.funny_comment && (
+                          <p className="text-xs opacity-70 mt-1 italic">"{obj.funny_comment}"</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Feedback button */}
             <button
               onClick={() => {
@@ -226,7 +331,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings }:
                 const mailtoUrl = `mailto:rusl@myx.is?subject=Rangt flokkað&body=${encodeURIComponent(feedback)}`;
                 window.open(mailtoUrl, '_blank');
               }}
-              className="mt-3 w-full py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
+              className="w-full py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
             >
               🤔 Ég held þetta sé rangt
             </button>
@@ -304,11 +409,17 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings }:
                   key={entry.id}
                   className="flex-shrink-0 w-24 bg-gray-800 rounded-lg overflow-hidden"
                 >
-                  <img
-                    src={entry.image}
-                    alt={entry.item}
-                    className="w-full h-16 object-cover"
-                  />
+                  <div className="relative">
+                    <img
+                      src={entry.image}
+                      alt={entry.item}
+                      className="w-full h-16 object-cover"
+                      style={showCartoon ? { filter: 'contrast(1.3) saturate(1.4) brightness(1.1)' } : {}}
+                    />
+                    {showCartoon && (
+                      <span className="absolute bottom-0 right-0 text-sm">{NANO_BANANA}</span>
+                    )}
+                  </div>
                   <div
                     className="p-1 text-white text-center"
                     style={{ backgroundColor: entry.binColor }}

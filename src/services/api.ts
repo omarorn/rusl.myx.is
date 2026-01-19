@@ -99,6 +99,7 @@ export interface QuizQuestion {
   id: string;
   imageUrl: string;
   imageKey: string;
+  item: string;
   options: Array<{
     bin: string;
     name: string;
