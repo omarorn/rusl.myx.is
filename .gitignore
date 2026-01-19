@@ -68,6 +68,9 @@ backup-*.sql
 *.tmp
 .temp/
 
+# Image sandbox (local R2 sync folder)
+images-sandbox/
+
 # User credentials and tokens
 .secrets
 *.pem

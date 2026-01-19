@@ -49,12 +49,17 @@ quiz.get('/random', async (c) => {
   const env = c.env;
 
   try {
-    // Get a random approved quiz image
+    // Get a quiz image, prioritizing:
+    // 1. Newer images (higher created_at)
+    // 2. Less shown images (lower times_shown)
+    // Uses weighted scoring: newer + less shown = higher priority
+    // Random factor added to prevent always showing the exact same image
     const image = await env.DB.prepare(`
       SELECT id, image_key, item, bin, reason, times_shown, times_correct
       FROM quiz_images
       WHERE approved = 1
-      ORDER BY RANDOM()
+      ORDER BY
+        (created_at / 1000000000.0) - (times_shown * 10) + (RANDOM() % 100) DESC
       LIMIT 1
     `).first<QuizImage>();
 

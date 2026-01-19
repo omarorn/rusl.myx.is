@@ -1,6 +1,6 @@
 # /deploy-all - Deploy Worker
 
-Deploy the rusl.myx.is worker to production with verification.
+Deploy the trash.myx.is worker to production with verification.
 
 ## What This Command Does
 
@@ -30,7 +30,7 @@ Deploy the rusl.myx.is worker to production with verification.
 3. **Verify deployment**:
    ```bash
    # Check API status
-   curl https://rusl.myx.is/api/stats/global
+   curl https://trash.myx.is/api/stats/global
    ```
 
 4. **Monitor logs** (watch for errors):
@@ -50,7 +50,7 @@ Deploy the rusl.myx.is worker to production with verification.
 
 [2/4] Deploying worker...
   ✅ Published rusl-myx-is (2.3s)
-     https://rusl.myx.is
+     https://trash.myx.is
      Version: f4e7b2a1
 
 [3/4] Verifying deployment...
