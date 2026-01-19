@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useSettings } from '../context/SettingsContext';
+import { useTranslation } from '../locales/translations';
+import { getJokeOfTheDay, type JokeOfTheDay } from '../services/api';
 
 interface DesktopWrapperProps {
   children: React.ReactNode;
@@ -6,6 +9,10 @@ interface DesktopWrapperProps {
 
 export function DesktopWrapper({ children }: DesktopWrapperProps) {
   const [isMobile, setIsMobile] = useState(true);
+  const [joke, setJoke] = useState<JokeOfTheDay | null>(null);
+  const [jokeLoading, setJokeLoading] = useState(true);
+  const { language, setLanguage } = useSettings();
+  const t = useTranslation(language);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -16,6 +23,16 @@ export function DesktopWrapper({ children }: DesktopWrapperProps) {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Fetch joke of the day
+  useEffect(() => {
+    if (!isMobile) {
+      getJokeOfTheDay()
+        .then(setJoke)
+        .catch(console.error)
+        .finally(() => setJokeLoading(false));
+    }
+  }, [isMobile]);
+
   // On mobile, render app directly
   if (isMobile) {
     return <>{children}</>;
@@ -23,37 +40,61 @@ export function DesktopWrapper({ children }: DesktopWrapperProps) {
 
   // On desktop, show landing page with app in phone frame
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-emerald-900 flex">
+    <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-emerald-900 flex relative">
+      {/* Language Switcher - Top Right */}
+      <div className="absolute top-4 right-4 flex gap-2">
+        <button
+          onClick={() => setLanguage('is')}
+          className={`px-3 py-2 rounded-lg font-medium transition-colors ${
+            language === 'is'
+              ? 'bg-white text-green-900'
+              : 'bg-white/20 text-white hover:bg-white/30'
+          }`}
+        >
+          🇮🇸 IS
+        </button>
+        <button
+          onClick={() => setLanguage('en')}
+          className={`px-3 py-2 rounded-lg font-medium transition-colors ${
+            language === 'en'
+              ? 'bg-white text-green-900'
+              : 'bg-white/20 text-white hover:bg-white/30'
+          }`}
+        >
+          🇬🇧 EN
+        </button>
+      </div>
+
       {/* Left side - Info */}
       <div className="flex-1 flex flex-col justify-center p-12 text-white">
         <div className="max-w-lg">
           <h1 className="text-5xl font-bold mb-4">
-            ♻️ Ruslaflokkun
+            ♻️ {t('app.title')}
           </h1>
           <p className="text-xl text-green-200 mb-8">
-            Skannaðu rusl og lærðu rétta flokkun með gervigreind
+            {t('desktop.subtitle')}
           </p>
 
           <div className="space-y-4 mb-8">
             <div className="flex items-center gap-4 bg-white/10 rounded-xl p-4">
               <span className="text-3xl">📷</span>
               <div>
-                <h3 className="font-bold">Skannaðu með myndavél</h3>
-                <p className="text-sm text-green-200">Taktu mynd af hvaða hlut sem er</p>
+                <h3 className="font-bold">{t('desktop.feature1_title')}</h3>
+                <p className="text-sm text-green-200">{t('desktop.feature1_desc')}</p>
               </div>
             </div>
             <div className="flex items-center gap-4 bg-white/10 rounded-xl p-4">
               <span className="text-3xl">🤖</span>
               <div>
-                <h3 className="font-bold">Gervigreind greinir</h3>
-                <p className="text-sm text-green-200">Fáðu svar á sekúndubroti</p>
+                <h3 className="font-bold">{t('desktop.feature2_title')}</h3>
+                <p className="text-sm text-green-200">{t('desktop.feature2_desc')}</p>
               </div>
             </div>
             <div className="flex items-center gap-4 bg-white/10 rounded-xl p-4">
               <span className="text-3xl">🎯</span>
               <div>
-                <h3 className="font-bold">Rétta tunnuna</h3>
-                <p className="text-sm text-green-200">Samkvæmt íslenskum reglum</p>
+                <h3 className="font-bold">{t('desktop.feature3_title')}</h3>
+                <p className="text-sm text-green-200">{t('desktop.feature3_desc')}</p>
               </div>
             </div>
           </div>
@@ -64,19 +105,31 @@ export function DesktopWrapper({ children }: DesktopWrapperProps) {
               href="#/quiz"
               className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-xl font-bold transition-colors"
             >
-              🎮 Spila leik
+              🎮 {t('desktop.play_game')}
             </a>
             <a
               href="#/stats"
               className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-6 py-3 rounded-xl font-bold transition-colors"
             >
-              📊 Tölfræði
+              📊 {t('desktop.stats')}
             </a>
+          </div>
+
+          {/* Joke of the Day */}
+          <div className="mb-8 bg-yellow-500/20 rounded-xl p-4 border border-yellow-400/30">
+            <h3 className="font-bold text-yellow-300 mb-2 flex items-center gap-2">
+              😂 {t('desktop.joke_title')}
+            </h3>
+            {jokeLoading ? (
+              <p className="text-sm text-green-200 italic">{t('desktop.joke_loading')}</p>
+            ) : joke ? (
+              <p className="text-white">{joke.joke}</p>
+            ) : null}
           </div>
 
           {/* Sponsors */}
           <div className="pt-8 border-t border-white/20">
-            <p className="text-sm text-green-300 mb-4">Styrktaraðilar:</p>
+            <p className="text-sm text-green-300 mb-4">{t('desktop.sponsors')}</p>
             <div className="flex gap-6 items-center">
               <a
                 href="https://litlagamaleigan.is"

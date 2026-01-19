@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import type { Env, UserStats } from '../types';
+import { generateJokeFromScans, type JokeResponse } from '../services/joke-generator';
 
 const stats = new Hono<{ Bindings: Env }>();
 
@@ -99,6 +100,58 @@ stats.get('/recent', async (c) => {
     count: examples.length,
     examples,
   });
+});
+
+// GET /api/stats/joke - AI-generated joke of the day based on recent scans
+stats.get('/joke', async (c) => {
+  const CACHE_KEY = 'joke_of_the_day';
+  const CACHE_TTL = 24 * 60 * 60; // 24 hours in seconds
+
+  // Try to get cached joke
+  const cached = await c.env.CACHE.get(CACHE_KEY);
+  if (cached) {
+    try {
+      const jokeData = JSON.parse(cached) as JokeResponse;
+      return c.json(jokeData);
+    } catch {
+      // Invalid cache, regenerate
+    }
+  }
+
+  // Get recent scans for joke generation
+  const result = await c.env.DB.prepare(`
+    SELECT item, bin
+    FROM scans
+    WHERE bin != 'mixed'
+      AND item != 'Óþekkt hlutur'
+      AND item != 'Óþekkt'
+      AND confidence > 0.5
+    ORDER BY created_at DESC
+    LIMIT 20
+  `).all();
+
+  const recentScans = (result.results || []).map((scan: Record<string, unknown>) => ({
+    item: scan.item as string,
+    bin: scan.bin as string,
+  }));
+
+  // Generate new joke
+  const jokeResponse = await generateJokeFromScans(recentScans, c.env.GEMINI_API_KEY);
+
+  if (!jokeResponse) {
+    // Return fallback joke if generation fails
+    const fallback: JokeResponse = {
+      joke: 'Af hverju fór plastflaskan í ræktina? Til að verða BUFF-ur fyrir grænu tunnuna!',
+      basedOn: [],
+      generatedAt: new Date().toISOString(),
+    };
+    return c.json(fallback);
+  }
+
+  // Cache the joke
+  await c.env.CACHE.put(CACHE_KEY, JSON.stringify(jokeResponse), { expirationTtl: CACHE_TTL });
+
+  return c.json(jokeResponse);
 });
 
 export default stats;

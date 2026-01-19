@@ -453,3 +453,15 @@ export async function getAdminStats(): Promise<AdminStatsResponse> {
 export function getQuizImageUrl(imageKey: string): string {
   return `${API_BASE}/api/quiz/image/${imageKey}`;
 }
+
+// Joke of the day API
+export interface JokeOfTheDay {
+  joke: string;
+  basedOn: string[];
+  generatedAt: string;
+}
+
+export async function getJokeOfTheDay(): Promise<JokeOfTheDay> {
+  const response = await fetch(`${API_BASE}/api/stats/joke`);
+  return response.json();
+}
