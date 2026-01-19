@@ -8,6 +8,7 @@ import quiz from './routes/quiz';
 import describe from './routes/describe';
 import review from './routes/review';
 import ads from './routes/ads';
+import admin from './routes/admin';
 import { runPostProcessingReview } from './services/review';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -15,8 +16,8 @@ const app = new Hono<{ Bindings: Env }>();
 // CORS for PWA
 app.use('*', cors({
   origin: ['https://trash.myx.is', 'https://rusl.myx.is', 'http://localhost:3000', 'http://localhost:5173'],
-  allowMethods: ['GET', 'POST', 'OPTIONS'],
-  allowHeaders: ['Content-Type'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
 // Health check (API only)
@@ -45,6 +46,11 @@ app.get('/api', (c) => {
       'GET /api/ads',
       'POST /api/ads/click',
       'GET /api/ads/sponsors',
+      'GET /api/admin/images',
+      'PUT /api/admin/images/:id',
+      'DELETE /api/admin/images/:id',
+      'POST /api/admin/images/batch',
+      'GET /api/admin/stats',
     ],
   });
 });
@@ -57,6 +63,7 @@ app.route('/api/quiz', quiz);
 app.route('/api/describe', describe);
 app.route('/api/review', review);
 app.route('/api/ads', ads);
+app.route('/api/admin', admin);
 
 // 404 handler for API routes only
 app.notFound((c) => {

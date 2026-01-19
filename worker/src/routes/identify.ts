@@ -150,10 +150,10 @@ async function saveQuizImage(
       customMetadata: { item, bin, userHash },
     });
 
-    // Save to quiz_images table
+    // Save to quiz_images table (approved = 0 = pending admin review)
     await db.prepare(`
-      INSERT INTO quiz_images (image_key, item, bin, reason, confidence, submitted_by)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO quiz_images (image_key, item, bin, reason, confidence, submitted_by, approved)
+      VALUES (?, ?, ?, ?, ?, ?, 0)
     `).bind(imageKey, item, bin, reason, confidence, userHash).run();
 
     console.log(`[Quiz] Saved image: ${imageKey}`);
@@ -281,6 +281,10 @@ identify.post('/', async (c) => {
       funFact: funFact || undefined,
       dadJoke: result.dadJoke || undefined,
       imageKey: imageKey || undefined,
+      // Multi-object detection for wide shots
+      isWideShot: result.isWideShot,
+      allObjects: result.allObjects,
+      funnyComments: result.funnyComments,
     });
   } catch (err) {
     console.error('Identify error:', err);

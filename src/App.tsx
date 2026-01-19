@@ -5,8 +5,9 @@ import { Quiz } from './components/Quiz';
 import { LiveMode } from './components/LiveMode';
 import { WelcomeIntro } from './components/WelcomeIntro';
 import { Settings } from './components/Settings';
+import { Admin } from './components/Admin';
 
-type View = 'intro' | 'scanner' | 'stats' | 'quiz' | 'live' | 'settings';
+type View = 'intro' | 'scanner' | 'stats' | 'quiz' | 'live' | 'settings' | 'admin';
 
 // Map hash routes to views
 const ROUTES: Record<string, View> = {
@@ -15,6 +16,7 @@ const ROUTES: Record<string, View> = {
   '#/stats': 'stats',
   '#/live': 'live',
   '#/settings': 'settings',
+  '#/admin': 'admin',
   '#/': 'scanner',
   '': 'scanner',
 };
@@ -66,6 +68,7 @@ export default function App() {
       stats: '#/stats',
       live: '#/live',
       settings: '#/settings',
+      admin: '#/admin',
     };
     window.location.hash = hashMap[newView];
     setView(newView);
@@ -95,6 +98,7 @@ export default function App() {
       {view === 'quiz' && <Quiz onClose={() => navigateTo('scanner')} />}
       {view === 'live' && <LiveMode onClose={() => navigateTo('scanner')} />}
       {view === 'settings' && <Settings onClose={() => navigateTo('scanner')} />}
+      {view === 'admin' && <Admin onClose={() => navigateTo('scanner')} />}
     </div>
   );
 }

@@ -135,3 +135,39 @@ Three tables in D1:
 - `scans` — Classification history (user_hash, item, bin, confidence, location)
 - `users` — Gamification (total_scans, total_points, current_streak, best_streak)
 - `fun_facts` — Educational content in Icelandic
+
+## Claude Code Skills
+
+Available skills in `.claude/skills/`:
+
+| Skill | Usage | Description |
+|-------|-------|-------------|
+| `/deploy-all` | Deploy worker | Type check and deploy to Cloudflare |
+| `/db-backup` | Backup database | Export trash-myx-db to SQL file |
+| `/check-types` | Type checking | Run TypeScript compiler on PWA and Worker |
+
+## Claude Code Rules
+
+Rules in `.claude/rules/` provide guidance for:
+- `golden-rules.md` — Core development principles, Iceland-specific rules
+- `bash-scripts.md` — Making scripts executable in WSL
+- `cloudflare-workers-assets.md` — Static asset serving patterns
+- `tailwind-production.md` — Tailwind CSS build process
+- `html-content-escaping.md` — XSS prevention
+- `icelandic-onclick-escaping.md` — Icelandic character handling
+- `task-status.md` — Task completion conventions
+
+## MCP Servers
+
+Configured in `.claude/mcp-config.json`:
+
+| Server | Purpose | Required Env Vars |
+|--------|---------|-------------------|
+| `github` | GitHub operations | `GITHUB_TOKEN`, `SMITHERY_KEY` |
+| `cloudflare` | Cloudflare API | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` |
+
+## Plugins
+
+Enabled in `.claude/settings.json`:
+- `typescript-lsp` — TypeScript language server
+- `pr-review-toolkit` — PR review assistance

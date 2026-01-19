@@ -1,4 +1,4 @@
-import type { Env, ClassificationResult, BinType, Language } from '../types';
+import type { Env, ClassificationResult, BinType, Language, DetectedObject } from '../types';
 import { classifyWithGemini } from './gemini';
 import {
   checkOverrides,
@@ -67,6 +67,16 @@ export async function classifyItem(
     const override = checkOverrides(geminiResult.item);
     const bin: BinType = override || (geminiResult.bin as BinType);
 
+    // Extract funny comments from non-trash objects
+    const funnyComments: string[] = [];
+    if (geminiResult.all_objects) {
+      for (const obj of geminiResult.all_objects) {
+        if (!obj.is_trash && obj.funny_comment) {
+          funnyComments.push(`${obj.item}: ${obj.funny_comment}`);
+        }
+      }
+    }
+
     return {
       item: geminiResult.item,
       bin,
@@ -75,6 +85,9 @@ export async function classifyItem(
       confidence: geminiResult.confidence,
       source: 'gemini',
       dadJoke: geminiResult.fun_fact,
+      isWideShot: geminiResult.is_wide_shot,
+      allObjects: geminiResult.all_objects,
+      funnyComments: funnyComments.length > 0 ? funnyComments : undefined,
     };
   }
 

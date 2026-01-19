@@ -17,13 +17,32 @@ export interface HFClassification {
   score: number;
 }
 
-// Gemini response
+// Single detected object
+export interface DetectedObject {
+  item: string;
+  bin: string;
+  reason: string;
+  confidence: number;
+  is_trash: boolean;
+  funny_comment?: string;  // Humorous comment for non-trash items
+  crop_box?: {  // Suggested crop area (0-1 normalized coordinates)
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
+// Gemini response (can have multiple objects for wide shots)
 export interface GeminiResponse {
   item: string;
   bin: string;
   reason: string;
   confidence: number;
   fun_fact?: string;  // Dad joke or fun fact
+  is_wide_shot?: boolean;  // True if multiple objects detected
+  all_objects?: DetectedObject[];  // All detected objects in wide shots
+  primary_object_index?: number;  // Index of the main trash item
 }
 
 // Final classification result
@@ -35,6 +54,10 @@ export interface ClassificationResult {
   confidence: number;
   source: 'huggingface' | 'gemini';
   dadJoke?: string;  // AI-generated dad joke
+  // Multi-object detection for wide shots
+  isWideShot?: boolean;
+  allObjects?: DetectedObject[];
+  funnyComments?: string[];  // Humor for non-trash objects
 }
 
 // Bin types for Iceland
@@ -75,6 +98,10 @@ export interface IdentifyResponse {
   dadJoke?: string;    // AI-generated dad joke
   imageKey?: string;
   error?: string;
+  // Multi-object detection for wide shots
+  isWideShot?: boolean;
+  allObjects?: DetectedObject[];
+  funnyComments?: string[];  // Humor for non-trash objects
 }
 
 // User stats

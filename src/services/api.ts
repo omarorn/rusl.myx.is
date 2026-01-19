@@ -8,6 +8,22 @@ export interface BinInfo {
   icon: string;
 }
 
+// Detected object in wide shots
+export interface DetectedObject {
+  item: string;
+  bin: string;
+  reason: string;
+  confidence: number;
+  is_trash: boolean;
+  funny_comment?: string;
+  crop_box?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
 export interface IdentifyResponse {
   success: boolean;
   item: string;
@@ -20,6 +36,10 @@ export interface IdentifyResponse {
   funFact?: string;
   imageKey?: string;
   error?: string;
+  // Multi-object detection for wide shots
+  isWideShot?: boolean;
+  allObjects?: DetectedObject[];
+  funnyComments?: string[];
 }
 
 export interface UserStats {
@@ -290,4 +310,144 @@ export async function recordAdClick(impressionId: string): Promise<void> {
 export async function getSponsors(): Promise<{ success: boolean; sponsors: Sponsor[] }> {
   const response = await fetch(`${API_BASE}/api/ads/sponsors`);
   return response.json();
+}
+
+// Admin API
+export interface AdminImage {
+  id: string;
+  image_key: string;
+  item: string;
+  bin: string;
+  reason: string;
+  confidence: number;
+  submitted_by: string;
+  approved: number;
+  times_shown: number;
+  times_correct: number;
+  created_at: number;
+}
+
+export interface AdminImagesResponse {
+  success: boolean;
+  images: AdminImage[];
+  counts: {
+    total: number;
+    approved: number;
+    pending: number;
+    rejected: number;
+  };
+  pagination: { limit: number; offset: number };
+  error?: string;
+}
+
+export interface AdminStatsResponse {
+  success: boolean;
+  images: {
+    total_images: number;
+    approved: number;
+    pending: number;
+    rejected: number;
+    total_plays: number;
+    total_correct: number;
+  };
+  users: {
+    total_users: number;
+    total_scans: number;
+  };
+  recentScans: Array<{
+    item: string;
+    bin: string;
+    confidence: number;
+    created_at: number;
+  }>;
+}
+
+let adminPassword: string | null = null;
+
+export function setAdminPassword(password: string): void {
+  adminPassword = password;
+}
+
+export function clearAdminPassword(): void {
+  adminPassword = null;
+}
+
+export async function getAdminImages(
+  status: 'all' | 'approved' | 'pending' | 'rejected' = 'all',
+  limit = 50,
+  offset = 0
+): Promise<AdminImagesResponse> {
+  if (!adminPassword) {
+    return { success: false, images: [], counts: { total: 0, approved: 0, pending: 0, rejected: 0 }, pagination: { limit, offset }, error: 'Ekki innskráður' };
+  }
+  const response = await fetch(`${API_BASE}/api/admin/images?status=${status}&limit=${limit}&offset=${offset}`, {
+    headers: { 'Authorization': `Bearer ${adminPassword}` },
+  });
+  return response.json();
+}
+
+export async function updateAdminImage(
+  id: string,
+  updates: { approved?: number; item?: string; bin?: string; reason?: string }
+): Promise<{ success: boolean; message?: string; error?: string }> {
+  if (!adminPassword) {
+    return { success: false, error: 'Ekki innskráður' };
+  }
+  const response = await fetch(`${API_BASE}/api/admin/images/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${adminPassword}`,
+    },
+    body: JSON.stringify(updates),
+  });
+  return response.json();
+}
+
+export async function deleteAdminImage(id: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  if (!adminPassword) {
+    return { success: false, error: 'Ekki innskráður' };
+  }
+  const response = await fetch(`${API_BASE}/api/admin/images/${id}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${adminPassword}` },
+  });
+  return response.json();
+}
+
+export async function batchAdminImages(
+  ids: string[],
+  action: 'approve' | 'reject' | 'delete'
+): Promise<{ success: boolean; message?: string; error?: string }> {
+  if (!adminPassword) {
+    return { success: false, error: 'Ekki innskráður' };
+  }
+  const response = await fetch(`${API_BASE}/api/admin/images/batch`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${adminPassword}`,
+    },
+    body: JSON.stringify({ ids, action }),
+  });
+  return response.json();
+}
+
+export async function getAdminStats(): Promise<AdminStatsResponse> {
+  if (!adminPassword) {
+    return {
+      success: false,
+      images: { total_images: 0, approved: 0, pending: 0, rejected: 0, total_plays: 0, total_correct: 0 },
+      users: { total_users: 0, total_scans: 0 },
+      recentScans: [],
+    };
+  }
+  const response = await fetch(`${API_BASE}/api/admin/stats`, {
+    headers: { 'Authorization': `Bearer ${adminPassword}` },
+  });
+  return response.json();
+}
+
+export function getQuizImageUrl(imageKey: string): string {
+  return `${API_BASE}/api/quiz/image/${imageKey}`;
 }
