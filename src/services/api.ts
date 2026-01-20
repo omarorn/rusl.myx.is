@@ -465,3 +465,40 @@ export async function getJokeOfTheDay(): Promise<JokeOfTheDay> {
   const response = await fetch(`${API_BASE}/api/stats/joke`);
   return response.json();
 }
+
+// Image generation API
+export interface CartoonResponse {
+  success: boolean;
+  cartoonImage?: string;
+  error?: string;
+}
+
+export interface CropResponse {
+  success: boolean;
+  croppedImage?: string;
+  error?: string;
+}
+
+export async function generateCartoon(
+  imageBase64: string,
+  style: 'cute' | 'comic' | 'anime' = 'cute'
+): Promise<CartoonResponse> {
+  const response = await fetch(`${API_BASE}/api/image/cartoon`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: imageBase64, style }),
+  });
+  return response.json();
+}
+
+export async function cropImage(
+  imageBase64: string,
+  cropBox: { x: number; y: number; width: number; height: number }
+): Promise<CropResponse> {
+  const response = await fetch(`${API_BASE}/api/image/crop`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: imageBase64, cropBox }),
+  });
+  return response.json();
+}

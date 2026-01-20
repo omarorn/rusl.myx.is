@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCamera } from '../hooks/useCamera';
-import { identifyItem, type IdentifyResponse, type DetectedObject } from '../services/api';
+import { identifyItem, generateCartoon, type IdentifyResponse, type DetectedObject } from '../services/api';
 import { AdSlot } from './AdSlot';
+import { cropImageClient, drawCropOverlay } from '../utils/imageUtils';
 
 interface LogEntry {
   id: string;
@@ -44,18 +45,22 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings }:
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [currentResult, setCurrentResult] = useState<IdentifyResponse | null>(null);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
+  const [overlayImage, setOverlayImage] = useState<string | null>(null);
+  const [cartoonImage, setCartoonImage] = useState<string | null>(null);
+  const [isGeneratingCartoon, setIsGeneratingCartoon] = useState(false);
   const [showCartoon, setShowCartoon] = useState(true);  // Cartoon mode as default
   const [showAllObjects, setShowAllObjects] = useState(false);
+  const [selectedObjectIndex, setSelectedObjectIndex] = useState(0);
   const logEndRef = useRef<HTMLDivElement>(null);
 
-  // Apply cartoon effect to image
+  // Apply cartoon effect to image (fallback CSS filter if AI cartoon not available)
   const getCartoonStyle = useCallback(() => {
-    if (!showCartoon) return {};
+    if (!showCartoon || cartoonImage) return {};
     return {
       filter: 'contrast(1.3) saturate(1.4) brightness(1.1)',
       borderRadius: '16px',
     };
-  }, [showCartoon]);
+  }, [showCartoon, cartoonImage]);
 
   // Get random banana comment
   const getBananaComment = useCallback(() => {
@@ -122,7 +127,10 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings }:
     if (!image) return;
 
     setCurrentImage(image);
+    setOverlayImage(null);
+    setCartoonImage(null);
     setCurrentResult(null);
+    setSelectedObjectIndex(0);
     setIsLoading(true);
 
     addLog('Mynd tekin', '📸', 'info');
@@ -148,6 +156,39 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings }:
           binColor: response.binInfo?.color || '#6b7280',
         };
         setHistory(prev => [entry, ...prev]);
+
+        // Generate overlay for wide shots with multiple objects
+        if (response.isWideShot && response.allObjects && response.allObjects.length > 1) {
+          addLog(`${response.allObjects.length} hlutir greindir`, '🔍', 'info');
+          drawCropOverlay(image, response.allObjects, 0)
+            .then(overlay => {
+              setOverlayImage(overlay);
+            })
+            .catch(err => {
+              console.error('Failed to draw overlay:', err);
+            });
+        }
+
+        // Generate AI cartoon in background
+        if (showCartoon) {
+          setIsGeneratingCartoon(true);
+          addLog('Bý til teiknimynd...', '🎨', 'pending');
+          generateCartoon(image, 'cute')
+            .then(cartoonResponse => {
+              if (cartoonResponse.success && cartoonResponse.cartoonImage) {
+                setCartoonImage(cartoonResponse.cartoonImage);
+                addLog('Teiknimynd tilbúin!', '✨', 'success');
+              } else {
+                addLog('Notum CSS síu í staðinn', '🎨', 'info');
+              }
+            })
+            .catch(() => {
+              addLog('Notum CSS síu í staðinn', '🎨', 'info');
+            })
+            .finally(() => {
+              setIsGeneratingCartoon(false);
+            });
+        }
       } else {
         addLog(response.error || 'Villa kom upp', '❌', 'error');
       }
@@ -231,11 +272,29 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings }:
               {currentImage && (
                 <div className="relative flex-shrink-0">
                   <img
-                    src={currentImage}
+                    src={
+                      showCartoon && cartoonImage
+                        ? cartoonImage
+                        : (currentResult?.isWideShot && overlayImage)
+                          ? overlayImage
+                          : currentImage
+                    }
                     alt=""
-                    className="w-20 h-20 object-cover shadow-lg"
+                    className="w-20 h-20 object-cover shadow-lg rounded-2xl"
                     style={getCartoonStyle()}
                   />
+                  {/* Loading indicator for cartoon generation */}
+                  {isGeneratingCartoon && showCartoon && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-2xl">
+                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                  {/* Wide shot indicator */}
+                  {currentResult?.isWideShot && (
+                    <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs px-1 rounded">
+                      {currentResult.allObjects?.length || 0}
+                    </div>
+                  )}
                   {/* Nano banana for scale */}
                   {showCartoon && (
                     <div
@@ -249,7 +308,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings }:
                   <button
                     onClick={() => setShowCartoon(!showCartoon)}
                     className="absolute -top-1 -left-1 w-6 h-6 bg-black/50 rounded-full text-xs flex items-center justify-center"
-                    title={showCartoon ? 'Sýna frummynd' : 'Sýna cartoon'}
+                    title={showCartoon ? 'Sýna frummynd' : 'Sýna teiknimynd'}
                   >
                     {showCartoon ? '📷' : '🎨'}
                   </button>
@@ -306,18 +365,47 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings }:
                 {showAllObjects && (
                   <div className="mt-2 space-y-1">
                     {currentResult.allObjects.map((obj, i) => (
-                      <div
+                      <button
                         key={i}
-                        className={`p-2 rounded text-sm ${obj.is_trash ? 'bg-white/10' : 'bg-white/5 opacity-70'}`}
+                        onClick={async () => {
+                          setSelectedObjectIndex(i);
+                          // Update overlay to highlight selected object
+                          if (currentImage && currentResult.allObjects) {
+                            const overlay = await drawCropOverlay(currentImage, currentResult.allObjects, i);
+                            setOverlayImage(overlay);
+                          }
+                          // If object has crop_box, crop to it
+                          if (obj.crop_box && currentImage) {
+                            addLog(`Klippi að: ${obj.item}`, '✂️', 'info');
+                            try {
+                              const cropped = await cropImageClient(currentImage, obj.crop_box);
+                              setCurrentImage(cropped);
+                              setOverlayImage(null);
+                            } catch (err) {
+                              console.error('Crop failed:', err);
+                            }
+                          }
+                        }}
+                        className={`w-full p-2 rounded text-sm text-left transition-colors ${
+                          i === selectedObjectIndex
+                            ? 'bg-white/20 ring-2 ring-white/50'
+                            : obj.is_trash ? 'bg-white/10 hover:bg-white/15' : 'bg-white/5 opacity-70 hover:opacity-100'
+                        }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span>{obj.is_trash ? '🗑️' : '👀'} {obj.item}</span>
+                          <span>
+                            {i === selectedObjectIndex ? '✓ ' : ''}
+                            {obj.is_trash ? '🗑️' : '👀'} {obj.item}
+                          </span>
                           <span className="text-xs opacity-70">{obj.bin}</span>
                         </div>
                         {obj.funny_comment && (
                           <p className="text-xs opacity-70 mt-1 italic">"{obj.funny_comment}"</p>
                         )}
-                      </div>
+                        {obj.crop_box && (
+                          <p className="text-xs opacity-50 mt-1">📐 Smelltu til að klippa</p>
+                        )}
+                      </button>
                     ))}
                   </div>
                 )}

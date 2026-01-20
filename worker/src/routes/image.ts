@@ -18,15 +18,16 @@ image.post('/cartoon', async (c) => {
       return c.json({ error: 'Mynd vantar' }, 400);
     }
 
-    const apiKey = env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return c.json({ error: 'API lykill vantar' }, 500);
-    }
-
-    const result = await generateCartoonImage(imageBase64, apiKey, style || 'cute');
+    // Use Cloudflare AI binding
+    const result = await generateCartoonImage(imageBase64, env.AI || null, style || 'cute');
 
     if (!result.success) {
-      return c.json({ error: result.error || 'Villa við að búa til teiknimynd' }, 500);
+      // Return graceful failure - frontend will use CSS filter instead
+      return c.json({
+        success: false,
+        error: result.error || 'Gervigreind ekki tiltæk',
+        useCssFilter: true
+      });
     }
 
     return c.json({
@@ -35,7 +36,11 @@ image.post('/cartoon', async (c) => {
     });
   } catch (err) {
     console.error('Cartoon generation error:', err);
-    return c.json({ error: 'Villa við að búa til teiknimynd' }, 500);
+    return c.json({
+      success: false,
+      error: 'Villa við að búa til teiknimynd',
+      useCssFilter: true
+    });
   }
 });
 
