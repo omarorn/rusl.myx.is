@@ -61,6 +61,9 @@ app.get('/api', (c) => {
       'POST /api/trips',
       'GET /api/trips',
       'GET /api/trips/:id',
+      'POST /api/trips/:id/items',
+      'PUT /api/trips/:id/complete',
+      'DELETE /api/trips/:id/items/:itemId',
     ],
   });
 });
