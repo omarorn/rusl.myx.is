@@ -1,7 +1,7 @@
 // src/components/TripScreen.tsx
 import { useState, useEffect } from 'react';
 import type { SorpaTrip, TripItem, SorpaStation } from '../types/trip';
-import { createTrip, getStations, addTripItem, completeTrip, removeTripItem, getUserHash } from '../services/api';
+import { createTrip, getStations, addTripItem, completeTrip, removeTripItem, getUserHash, getUserTrips, getTrip } from '../services/api';
 
 // SORPA bin info for display
 const SORPA_BIN_INFO: Record<string, { name: string; icon: string }> = {
@@ -31,12 +31,35 @@ export function TripScreen({ onScanItem, onClose, lastScannedItem }: TripScreenP
   const [items, setItems] = useState<TripItem[]>([]);
   const [stations, setStations] = useState<SorpaStation[]>([]);
   const [selectedStation, setSelectedStation] = useState<string>('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load stations on mount
+  // Load stations and check for existing trip on mount
   useEffect(() => {
-    getStations().then(data => setStations(data.stations)).catch(() => {});
+    const init = async () => {
+      try {
+        // Load stations
+        const stationsData = await getStations();
+        setStations(stationsData.stations);
+
+        // Check for existing active trip
+        const userHash = getUserHash();
+        const { trips } = await getUserTrips(userHash, 'loading');
+
+        if (trips && trips.length > 0) {
+          // Load existing trip with items
+          const existingTrip = trips[0];
+          const tripData = await getTrip(existingTrip.id);
+          setTrip(tripData.trip);
+          setItems(tripData.items || []);
+        }
+      } catch (err) {
+        console.error('Failed to initialize:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
   }, []);
 
   // Add last scanned item to trip
@@ -54,7 +77,22 @@ export function TripScreen({ onScanItem, onClose, lastScannedItem }: TripScreenP
       const { trip: newTrip } = await createTrip(getUserHash(), selectedStation || undefined);
       setTrip(newTrip);
       setItems([]);
-    } catch (err) {
+    } catch (err: unknown) {
+      // If 409, try to load existing trip
+      const response = err as { status?: number };
+      if (response?.status === 409) {
+        try {
+          const { trips } = await getUserTrips(getUserHash(), 'loading');
+          if (trips && trips.length > 0) {
+            const tripData = await getTrip(trips[0].id);
+            setTrip(tripData.trip);
+            setItems(tripData.items || []);
+            return;
+          }
+        } catch {
+          // Fall through to error
+        }
+      }
       setError('Villa við að búa til ferð');
     } finally {
       setLoading(false);
@@ -109,6 +147,22 @@ export function TripScreen({ onScanItem, onClose, lastScannedItem }: TripScreenP
     acc[ramp].push(item);
     return acc;
   }, {} as Record<number, TripItem[]>);
+
+  // Show loading state while checking for existing trips
+  if (loading && !trip) {
+    return (
+      <div className="h-full flex flex-col bg-gray-100">
+        <header className="safe-top bg-purple-600 text-white p-3 flex items-center justify-between shadow-lg">
+          <button onClick={onClose} className="text-xl p-1" title="Til baka">←</button>
+          <h1 className="text-lg font-bold">🚗 Ferð á SORPA</h1>
+          <div className="w-8" />
+        </header>
+        <main className="flex-1 flex items-center justify-center">
+          <p className="text-gray-500">Hleður...</p>
+        </main>
+      </div>
+    );
+  }
 
   if (!trip) {
     return (
