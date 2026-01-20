@@ -127,3 +127,76 @@ export interface ScanRecord {
   lat: number | null;
   lng: number | null;
 }
+
+// SORPA Bin Types (more granular than home bins)
+export type SorpaBinType =
+  | 'pappir'        // Paper (books, magazines)
+  | 'pappi'         // Cardboard (boxes)
+  | 'plast_mjukt'   // Soft plastic (film, bags)
+  | 'plast_hardt'   // Hard plastic (containers)
+  | 'malmar'        // Metals
+  | 'gler'          // Glass
+  | 'raftaeki_smaa' // Small electronics
+  | 'raftaeki_stor' // Large electronics
+  | 'spilliefni'    // Hazardous
+  | 'textill'       // Textiles
+  | 'gardur'        // Garden waste
+  | 'byggingar'     // Construction
+  | 'blandadur';    // Mixed (last resort)
+
+// SORPA Station
+export interface SorpaStation {
+  id: string;
+  name: string;
+  address: string | null;
+  lat: number;
+  lng: number;
+  type: 'endurvinnslustod' | 'grenndarstod';
+  opening_hours: string | null;
+  aerial_image_url: string | null;
+  traffic_flow: 'clockwise' | 'counterclockwise';
+  created_at: number;
+}
+
+// Station Ramp
+export interface StationRamp {
+  id: string;
+  station_id: string;
+  ramp_number: number;
+  bins: SorpaBinType[];  // Parsed from JSON
+}
+
+// Trip status
+export type TripStatus = 'loading' | 'ready' | 'in_progress' | 'completed';
+
+// SORPA Trip
+export interface SorpaTrip {
+  id: string;
+  user_hash: string;
+  station_id: string | null;
+  status: TripStatus;
+  created_at: number;
+  completed_at: number | null;
+}
+
+// Trip Item
+export interface TripItem {
+  id: string;
+  trip_id: string;
+  item_name: string;
+  home_bin: BinType;
+  sorpa_bin: SorpaBinType;
+  ramp_number: number | null;
+  confidence: number | null;
+  image_key: string | null;
+  scan_mode: 'item' | 'batch' | 'voice' | 'continuous';
+  scanned_at: number;
+}
+
+// SORPA Bin Metadata
+export interface SorpaBinInfo {
+  type: SorpaBinType;
+  name_is: string;
+  icon: string;
+  typical_ramp: number | null;
+}
