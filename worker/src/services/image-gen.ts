@@ -1,5 +1,6 @@
 // Image generation service using Gemini 2.5 Flash Image
 // Used for cartoon effects and image editing
+// Note: gemini-2.0-flash-exp-image-generation is the model that supports image output
 
 const GEMINI_IMAGE_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent';
 

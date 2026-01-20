@@ -9,6 +9,7 @@ import describe from './routes/describe';
 import review from './routes/review';
 import ads from './routes/ads';
 import admin from './routes/admin';
+import image from './routes/image';
 import { runPostProcessingReview } from './services/review';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -51,6 +52,8 @@ app.get('/api', (c) => {
       'DELETE /api/admin/images/:id',
       'POST /api/admin/images/batch',
       'GET /api/admin/stats',
+      'POST /api/image/cartoon',
+      'POST /api/image/crop',
     ],
   });
 });
@@ -64,6 +67,7 @@ app.route('/api/describe', describe);
 app.route('/api/review', review);
 app.route('/api/ads', ads);
 app.route('/api/admin', admin);
+app.route('/api/image', image);
 
 // 404 handler for API routes only
 app.notFound((c) => {
