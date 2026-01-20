@@ -22,24 +22,34 @@ export const HF_LABEL_TO_BIN: Record<string, BinType> = {
 
 // Items that ALWAYS go to specific bins regardless of model output
 export const ICELAND_OVERRIDES: Record<string, BinType> = {
+  // 3D printed plastics → mixed
   'pla': 'mixed',
   'abs': 'mixed',
   'petg': 'mixed',
   '3d printed': 'mixed',
   '3d print': 'mixed',
+  // Bioplastics → mixed
   'bioplastic': 'mixed',
   'compostable plastic': 'mixed',
   'biodegradable': 'mixed',
+  // TetraPak → paper
   'tetrapak': 'paper',
   'tetra pak': 'paper',
   'milk carton': 'paper',
   'juice carton': 'paper',
+  'mjólkurfernu': 'paper',
+  'safafernu': 'paper',
+  // Foam → recycling center
   'styrofoam': 'recycling_center',
   'foam': 'recycling_center',
   'polystyrene': 'recycling_center',
+  'frauðplast': 'recycling_center',
+  // Dirty paper → mixed
   'greasy cardboard': 'mixed',
   'pizza box': 'mixed',
   'dirty paper': 'mixed',
+  'fitubleyttur': 'mixed',
+  // Large metals → recycling center
   'bronze': 'recycling_center',
   'brass': 'recycling_center',
   'copper': 'recycling_center',
@@ -52,6 +62,35 @@ export const ICELAND_OVERRIDES: Record<string, BinType> = {
   'járn': 'recycling_center',
   'kopar': 'recycling_center',
   'eir': 'recycling_center',
+  // DEPOSIT ITEMS (skilagjald) → Endurvinnslan
+  'skilagjald': 'deposit',
+  'deposit': 'deposit',
+  'pant': 'deposit',
+  'pantflaska': 'deposit',
+  'pantdós': 'deposit',
+  'gosdós': 'deposit',
+  'bjórdós': 'deposit',
+  'cola': 'deposit',
+  'pepsi': 'deposit',
+  'coca-cola': 'deposit',
+  'sprite': 'deposit',
+  'fanta': 'deposit',
+  'egils': 'deposit',
+  'víking': 'deposit',
+  'gull': 'deposit',
+  'thule': 'deposit',
+  'tuborg': 'deposit',
+  'carlsberg': 'deposit',
+  'soda can': 'deposit',
+  'beer can': 'deposit',
+  'energy drink': 'deposit',
+  'red bull': 'deposit',
+  'monster': 'deposit',
+  'pet bottle': 'deposit',
+  'vatnsflaska': 'deposit',
+  'gosflaska': 'deposit',
+  'ölflaska': 'deposit',
+  'áldós': 'deposit',
 };
 
 // Get bin info from regions.ts based on region and language
@@ -77,6 +116,7 @@ export const BIN_INFO: Record<BinType, BinInfo> = {
   food: { name_is: 'Matarleifar', color: '#92400e', icon: '🍎' },
   mixed: { name_is: 'Blandaður úrgangur', color: '#6b7280', icon: '🗑️' },
   recycling_center: { name_is: 'Endurvinnslustöð', color: '#7c3aed', icon: '♻️' },
+  deposit: { name_is: 'Skilagjald (Endurvinnslan)', color: '#f59e0b', icon: '🐷' },
 };
 
 // Get all bin info for a region
@@ -84,7 +124,7 @@ export function getAllBinInfoForRegion(
   regionId: string = DEFAULT_REGION,
   lang: Language = 'is'
 ): Record<BinType, BinInfo> {
-  const bins: BinType[] = ['paper', 'plastic', 'food', 'mixed', 'recycling_center'];
+  const bins: BinType[] = ['paper', 'plastic', 'food', 'mixed', 'recycling_center', 'deposit'];
   const result: Record<BinType, BinInfo> = {} as Record<BinType, BinInfo>;
 
   for (const bin of bins) {
@@ -126,6 +166,11 @@ export function getReasonText(item: string | undefined | null, bin: BinType, sou
   // Check for special overrides
   const lowerItem = item.toLowerCase();
 
+  // Deposit items (skilagjald) → Endurvinnslan
+  if (bin === 'deposit') {
+    return `${item} á skilagjald! Skilaðu í Endurvinnslan og fáðu peningana til baka. ATH: Flöskur mega EKKI vera krumpaðar og enginn vökvi má vera í þeim.`;
+  }
+
   if (lowerItem.includes('3d') || lowerItem.includes('pla') || lowerItem.includes('abs')) {
     return '3D prentað plast fer í blandaðan úrgang þar sem það blandast ekki hefðbundnu plasti við endurvinnslu.';
   }
@@ -141,7 +186,7 @@ export function getReasonText(item: string | undefined | null, bin: BinType, sou
     return 'Stórir málmhlutir og rammar fara á endurvinnslustöð. Aðeins litlar málmumbúðir (dósir, lok) fara með plasti.';
   }
 
-  // Small metal items → Plastic bin
+  // Small metal items → Plastic bin (but NOT if it's a deposit item like soda/beer cans)
   if (bin === 'plastic' && (lowerItem.includes('dós') || lowerItem.includes('can') ||
       lowerItem.includes('lok') || lowerItem.includes('lid') || lowerItem.includes('ál') ||
       lowerItem.includes('alumin') || lowerItem.includes('metal') || lowerItem.includes('málm'))) {

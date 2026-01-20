@@ -11,7 +11,7 @@
  * - Reykjanesbær: https://www.reykjanesbaer.is
  */
 
-export type BinType = 'paper' | 'plastic' | 'food' | 'mixed' | 'recycling_center';
+export type BinType = 'paper' | 'plastic' | 'food' | 'mixed' | 'recycling_center' | 'deposit';
 
 export interface BinInfo {
   name_is: string;
@@ -172,13 +172,35 @@ export const REGIONS: Record<string, RegionInfo> = {
         ],
         not_allowed_is: [],
       },
+      deposit: {
+        name_is: 'Skilagjald (Endurvinnslan)',
+        name_en: 'Deposit Return (Endurvinnslan)',
+        color: '#f59e0b', // Gulur / Yellow-Orange (like the pig logo)
+        icon: '🐷',
+        description_is: 'Skila í Endurvinnslan skilagjaldsstöð - fáðu peningana til baka!',
+        examples_is: [
+          'PET flöskur með skilagjald',
+          'Áldósir með skilagjald',
+          'Glerflöskur með skilagjald',
+          'Gosdósir og bjórdósir',
+          'Vatnsflöskur (með skilagjald)',
+        ],
+        not_allowed_is: [
+          'Krumpaðar flöskur (verða að vera heilar!)',
+          'Flöskur með vökva í',
+          'Flöskur/dósir án skilagjalds',
+          'Mjólkurfernu og safafernu (fara í pappír)',
+          'Plastílát án skilagjaldsmerkis',
+        ],
+      },
     },
     special_rules: [
       'Mjólkurfernur (TetraPak) fara í pappír - sent til Svíþjóðar til endurvinnslu',
       '3D prentað plast (PLA, ABS, PETG) fer í blandaðan - SORPA getur ekki unnið úr því',
       'Líffræðilegt plast fer í blandaðan - engin iðnaðarmoltugerð á Íslandi',
       'Bréfpokar fyrir matarleifar fást ókeypis á SORPA stöðvum og í Bónus/Hagkaup/Krónan',
-      'Pantflöskur fara í pantskil, ekki í tunnur',
+      'Skilagjald: Flöskur mega EKKI vera krumpaðar og ekki hafa vökva í',
+      'Endurvinnslan stöðvar: https://www.sorpa.is/mottokustadir/endurvinnslustodvar/',
     ],
   },
 
@@ -288,12 +310,31 @@ export const REGIONS: Record<string, RegionInfo> = {
         ],
         not_allowed_is: [],
       },
+      deposit: {
+        name_is: 'Skilagjald (Endurvinnslan)',
+        name_en: 'Deposit Return (Endurvinnslan)',
+        color: '#f59e0b',
+        icon: '🐷',
+        description_is: 'Skila í Endurvinnslan skilagjaldsstöð - fáðu peningana til baka!',
+        examples_is: [
+          'PET flöskur með skilagjald',
+          'Áldósir með skilagjald',
+          'Glerflöskur með skilagjald',
+          'Gosdósir og bjórdósir',
+        ],
+        not_allowed_is: [
+          'Krumpaðar flöskur',
+          'Flöskur með vökva í',
+          'Án skilagjaldsmerkis',
+        ],
+      },
     },
     special_rules: [
       'Kalka og SORPA eru í samstarfi - sama flokkunarkerfi',
       'Endurvinnslutunnur (pappír/plast) tæmdar á 4 vikna fresti',
       'Matarleifar og blandaður tæmdur á 2 vikna fresti',
       'Grenndarstöðvar á mörgum stöðum á Suðurnesjum',
+      'Skilagjald: Flöskur mega EKKI vera krumpaðar',
     ],
   },
 
@@ -406,6 +447,24 @@ export const REGIONS: Record<string, RegionInfo> = {
         ],
         not_allowed_is: [],
       },
+      deposit: {
+        name_is: 'Skilagjald (Endurvinnslan)',
+        name_en: 'Deposit Return (Endurvinnslan)',
+        color: '#f59e0b',
+        icon: '🐷',
+        description_is: 'Skila í Endurvinnslan skilagjaldsstöð - fáðu peningana til baka!',
+        examples_is: [
+          'PET flöskur með skilagjald',
+          'Áldósir með skilagjald',
+          'Glerflöskur með skilagjald',
+          'Gosdósir og bjórdósir',
+        ],
+        not_allowed_is: [
+          'Krumpaðar flöskur',
+          'Flöskur með vökva í',
+          'Án skilagjaldsmerkis',
+        ],
+      },
     },
     special_rules: [
       'Tvískiptar tunnur: 240L (mat+blandað) og 360L (pappír+plast)',
@@ -414,6 +473,7 @@ export const REGIONS: Record<string, RegionInfo> = {
       'Klippikort fyrir umframúrgang - 5.650 kr fyrir 8 klipp',
       'Gámasvæði: Sumar kl.13-20 (virkir) / 13-17 (helgar), Vetur kl.13-18 / 13-17',
       'flokkumfleira@akureyri.is fyrir fyrirspurnir',
+      'Skilagjald: Flöskur mega EKKI vera krumpaðar',
     ],
   },
 };

@@ -61,7 +61,7 @@ export interface ClassificationResult {
 }
 
 // Bin types for Iceland
-export type BinType = 'paper' | 'plastic' | 'food' | 'mixed' | 'recycling_center';
+export type BinType = 'paper' | 'plastic' | 'food' | 'mixed' | 'recycling_center' | 'deposit';
 
 // Municipality types
 export type Municipality = 'reykjavik' | 'kopavogur' | 'hafnarfjordur' | 'gardabaer' | 'akureyri' | 'other';

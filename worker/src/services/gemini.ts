@@ -12,8 +12,18 @@ TUNNUR:
 - food: Matarleifar í pappírspoka (brúnt)
 - mixed: Blandaður úrgangur (grátt)
 - recycling_center: Endurvinnslustöð - gler, stórir málmhlutir, rafhlöður
+- deposit: Skilagjald (Endurvinnslan) 🐷 - drykkjarvöruumbúðir með skilagjald
 
 ATH: Flokkun getur verið mismunandi eftir sveitarfélögum.
+
+SKILAGJALD (MIKILVÆGT!):
+- Allar dósir og flöskur með skilagjald → deposit
+- Gosdósir (Coca-Cola, Pepsi, Sprite, Fanta, Egils) → deposit
+- Bjórdósir (Víking, Gull, Thule, Tuborg, Carlsberg) → deposit
+- Orkudrykkir (Red Bull, Monster) → deposit
+- PET vatnsflöskur og gosflöskur → deposit
+- Glerflöskur með skilagjald → deposit
+- ATHUGIÐ: Flöskur mega EKKI vera krumpaðar!
 
 MIKILVÆGAR REGLUR:
 1. Pappakassar og pappírsumbúðir → paper (hrein)
@@ -56,7 +66,7 @@ PABBA-BRANDARI: Bættu við fyndnum "fun_fact" brandara um rusl eða endurvinnsl
 Svaraðu AÐEINS með JSON:
 {
   "item": "nafn aðalhlutarins á íslensku",
-  "bin": "paper|plastic|food|mixed|recycling_center",
+  "bin": "paper|plastic|food|mixed|recycling_center|deposit",
   "reason": "stutt skýring á íslensku",
   "confidence": 0.0-1.0,
   "fun_fact": "pabba-brandari eða fyndið fact um rusl",
@@ -64,7 +74,7 @@ Svaraðu AÐEINS með JSON:
   "all_objects": [
     {
       "item": "nafn hlutar",
-      "bin": "paper|plastic|food|mixed|recycling_center",
+      "bin": "paper|plastic|food|mixed|recycling_center|deposit",
       "reason": "skýring",
       "confidence": 0.0-1.0,
       "is_trash": true/false,
@@ -168,7 +178,7 @@ export async function classifyWithGemini(
     }
 
     // Validate bin type
-    const validBins: BinType[] = ['paper', 'plastic', 'food', 'mixed', 'recycling_center'];
+    const validBins: BinType[] = ['paper', 'plastic', 'food', 'mixed', 'recycling_center', 'deposit'];
     if (!validBins.includes(parsed.bin as BinType)) {
       parsed.bin = 'mixed';
     }

@@ -100,6 +100,7 @@ export const translations = {
   'bin.food': { is: 'Matarleifar', en: 'Food waste' },
   'bin.mixed': { is: 'Blandaður úrgangur', en: 'Mixed waste' },
   'bin.recycling_center': { is: 'Endurvinnslustöð', en: 'Recycling center' },
+  'bin.deposit': { is: 'Skilagjald (Endurvinnslan)', en: 'Deposit Return (Endurvinnslan)' },
 
   // Desktop Landing Page
   'desktop.subtitle': { is: 'Skannaðu rusl og lærðu rétta flokkun með gervigreind', en: 'Scan waste and learn proper sorting with AI' },
