@@ -30,13 +30,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
       if (savedLang && (savedLang === 'is' || savedLang === 'en')) {
         setLanguageState(savedLang);
-      } else {
-        // Auto-detect from browser
-        const browserLang = navigator.language.toLowerCase();
-        if (!browserLang.startsWith('is')) {
-          setLanguageState('en');
-        }
       }
+      // Default language is always Icelandic ('is')
 
       if (savedRegion && savedRegion in REGIONS_INFO) {
         setRegionState(savedRegion);
