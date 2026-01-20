@@ -1,7 +1,7 @@
 import type { GeminiResponse, BinType, DetectedObject } from '../types';
 
-// Using latest Gemini 2.0 Flash with thinking capabilities
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent';
+// Using Gemini 2.0 Flash Exp (more reliable quota)
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
 
 const SYSTEM_PROMPT = `Þú ert sérfræðingur í ruslaflokkun á Íslandi (SORPA svæðið).
 Þú hefur dökkann húmor og elskar pabba-brandara.
@@ -92,11 +92,33 @@ export async function classifyWithGemini(
   try {
     // Remove data URL prefix if present
     const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const imageSizeKB = Math.round(imageData.length / 1024);
+    const hasPrefix = imageBase64.startsWith('data:image/');
 
-    console.log('[Gemini] Calling API, image size:', Math.round(imageData.length / 1024), 'KB');
+    console.log('[Gemini] Calling API');
+    console.log('[Gemini] Image has data URL prefix:', hasPrefix);
+    console.log('[Gemini] Raw input length:', Math.round(imageBase64.length / 1024), 'KB');
+    console.log('[Gemini] Cleaned image size:', imageSizeKB, 'KB');
+
+    // Check for empty/too small images
+    if (imageSizeKB < 1) {
+      console.error('[Gemini] Image too small or empty:', imageSizeKB, 'KB');
+      console.error('[Gemini] First 100 chars of input:', imageBase64.substring(0, 100));
+      return null;
+    }
 
     if (!apiKey) {
       console.error('[Gemini] No API key provided');
+      return null;
+    }
+
+    // Validate base64 data
+    try {
+      // Check if it's valid base64
+      const testDecode = atob(imageData.substring(0, 100));
+      console.log('[Gemini] Base64 validation passed');
+    } catch (e) {
+      console.error('[Gemini] Invalid base64 data:', e);
       return null;
     }
 
@@ -130,7 +152,15 @@ export async function classifyWithGemini(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[Gemini] API error:', response.status, errorText.substring(0, 300));
+      console.error('[Gemini] API error:', response.status, errorText.substring(0, 500));
+
+      // Check for specific error codes
+      if (response.status === 429) {
+        console.error('[Gemini] QUOTA EXHAUSTED - API key has hit rate limit');
+      } else if (response.status === 401 || response.status === 403) {
+        console.error('[Gemini] AUTHENTICATION ERROR - API key may be invalid');
+      }
+
       return null;
     }
 

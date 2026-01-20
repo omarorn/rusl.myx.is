@@ -25,7 +25,7 @@ interface HistoryEntry {
 // Nano banana for scale - the ultimate size reference
 const NANO_BANANA = '🍌';
 const BANANA_COMMENTS = [
-  'Bananí fyrir stærðarsamanburð',
+  'Banani fyrir stærðarsamanburð',
   'Staðlað mælibanani',
   'Alþjóðlegt bananamælikerfi',
   'Banani til viðmiðunar',

@@ -91,10 +91,12 @@ export async function classifyItem(
     };
   }
 
-  // If classification fails, return safe default
+  // If classification fails, return safe default with helpful message
+  console.error('[Classifier] Classification failed, returning default');
+
   const unknownReason = language === 'en'
-    ? 'Could not identify the item. When in doubt, put it in mixed waste.'
-    : 'Ekki tókst að greina hlutinn. Ef þú ert í vafa, settu í blandaðan úrgang.';
+    ? 'Could not identify the item. The AI service may be temporarily unavailable. When in doubt, put it in mixed waste.'
+    : 'Gat ekki greint hlutinn. AI þjónustan er ef til vill ekki tiltæk. Ef þú ert í vafa, settu í blandaðan úrgang.';
 
   return {
     item: language === 'en' ? 'Unknown item' : 'Óþekkt hlutur',
