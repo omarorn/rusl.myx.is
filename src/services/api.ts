@@ -502,3 +502,68 @@ export async function cropImage(
   });
   return response.json();
 }
+
+// ============================================
+// Trip API (Ferð á SORPA)
+// ============================================
+
+import type { SorpaStation, StationRamp, SorpaTrip, TripItem, SorpaBinInfo } from '../types/trip';
+
+// Stations API
+export async function getStations(): Promise<{ stations: SorpaStation[] }> {
+  const res = await fetch(`${API_BASE}/api/stations`);
+  return res.json();
+}
+
+export async function getStation(id: string): Promise<{ station: SorpaStation; ramps: StationRamp[] }> {
+  const res = await fetch(`${API_BASE}/api/stations/${id}`);
+  return res.json();
+}
+
+// Trips API
+export async function createTrip(userHash: string, stationId?: string): Promise<{ trip: SorpaTrip }> {
+  const res = await fetch(`${API_BASE}/api/trips`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userHash, stationId }),
+  });
+  return res.json();
+}
+
+export async function getTrip(id: string): Promise<{ trip: SorpaTrip; items: TripItem[] }> {
+  const res = await fetch(`${API_BASE}/api/trips/${id}`);
+  return res.json();
+}
+
+export async function getUserTrips(userHash: string, status?: string): Promise<{ trips: SorpaTrip[] }> {
+  const params = new URLSearchParams({ userHash });
+  if (status) params.append('status', status);
+  const res = await fetch(`${API_BASE}/api/trips?${params}`);
+  return res.json();
+}
+
+export async function addTripItem(
+  tripId: string,
+  item: { itemName: string; homeBin: string; confidence?: number }
+): Promise<{ item: TripItem; sorpaBinInfo: SorpaBinInfo }> {
+  const res = await fetch(`${API_BASE}/api/trips/${tripId}/items`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(item),
+  });
+  return res.json();
+}
+
+export async function completeTrip(tripId: string): Promise<{ success: boolean; pointsAwarded: number }> {
+  const res = await fetch(`${API_BASE}/api/trips/${tripId}/complete`, {
+    method: 'PUT',
+  });
+  return res.json();
+}
+
+export async function removeTripItem(tripId: string, itemId: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_BASE}/api/trips/${tripId}/items/${itemId}`, {
+    method: 'DELETE',
+  });
+  return res.json();
+}
