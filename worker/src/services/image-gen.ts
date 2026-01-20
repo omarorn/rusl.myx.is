@@ -1,5 +1,8 @@
-// Image generation service using Cloudflare AI
+// Image generation service using Gemini 2.0 Flash Image
 // Used for cartoon effects and image editing
+
+// Gemini 2.0 Flash Image Generation model
+const GEMINI_IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent';
 
 export interface CartoonResult {
   success: boolean;
@@ -13,59 +16,92 @@ export interface CropResult {
   error?: string;
 }
 
-// Cloudflare AI interface
-interface CloudflareAI {
-  run(model: string, input: unknown): Promise<unknown>;
-}
-
 /**
- * Generate a cartoon version of an image using Cloudflare AI
+ * Generate a cartoon version of an image using Gemini
  * Falls back to original image with CSS filter hint if generation fails
  */
 export async function generateCartoonImage(
   imageBase64: string,
-  ai: CloudflareAI | null,
+  apiKey: string | null,
   style: 'cute' | 'comic' | 'anime' = 'cute'
 ): Promise<CartoonResult> {
   try {
-    if (!ai) {
-      console.log('[ImageGen] AI binding not available, returning original');
-      return { success: false, error: 'AI not available' };
+    if (!apiKey) {
+      console.log('[ImageGen] No API key, falling back to CSS filter');
+      return { success: false, error: 'No API key' };
     }
 
     // Remove data URL prefix if present
     const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
 
     const stylePrompts = {
-      cute: 'A cute kawaii-style cartoon illustration of waste items, colorful and friendly, for a recycling app',
-      comic: 'A comic book style illustration with bold outlines and vibrant colors showing waste items',
-      anime: 'An anime-style illustration of recycling items, colorful and appealing',
+      cute: 'Transform this photo into a cute, kawaii-style cartoon illustration. Make it colorful, friendly, and appealing for a recycling app. Keep the main object recognizable but stylized.',
+      comic: 'Transform this photo into a comic book style illustration with bold outlines, vibrant colors, and dramatic shading. Keep the main object recognizable.',
+      anime: 'Transform this photo into an anime-style illustration with soft shading, large expressive features, and vibrant colors. Keep the main object recognizable.',
     };
 
-    console.log('[ImageGen] Generating cartoon with Cloudflare AI, style:', style);
+    console.log('[ImageGen] Generating cartoon with Gemini, style:', style);
 
-    // Use Cloudflare's image-to-image or text-to-image model
-    // Note: @cf/stabilityai/stable-diffusion-xl-base-1.0 for text-to-image
-    // For now, we'll generate a stylized version based on the prompt
-    const result = await ai.run('@cf/stabilityai/stable-diffusion-xl-base-1.0', {
-      prompt: stylePrompts[style],
-      num_steps: 20,
-    }) as ArrayBuffer;
+    const requestBody = {
+      contents: [{
+        parts: [
+          {
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: imageData,
+            },
+          },
+          {
+            text: stylePrompts[style],
+          },
+        ],
+      }],
+      generationConfig: {
+        responseModalities: ['IMAGE', 'TEXT'],
+        temperature: 0.8,
+      },
+    };
 
-    if (result && result.byteLength > 0) {
-      // Convert ArrayBuffer to base64
-      const bytes = new Uint8Array(result);
-      let binary = '';
-      for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      const base64 = btoa(binary);
-      const cartoonImage = `data:image/png;base64,${base64}`;
-      console.log('[ImageGen] Cartoon generated successfully');
-      return { success: true, cartoonImage };
+    const response = await fetch(`${GEMINI_IMAGE_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[ImageGen] Gemini API error:', response.status, errorText.substring(0, 200));
+      return { success: false, error: `API error: ${response.status}` };
     }
 
-    console.error('[ImageGen] No image generated');
+    const data = await response.json() as {
+      candidates?: Array<{
+        content?: {
+          parts?: Array<{
+            text?: string;
+            inlineData?: {
+              mimeType: string;
+              data: string;
+            };
+          }>;
+        };
+      }>;
+    };
+
+    // Find image in response
+    const parts = data?.candidates?.[0]?.content?.parts;
+    if (parts) {
+      for (const part of parts) {
+        if (part.inlineData?.data) {
+          const mimeType = part.inlineData.mimeType || 'image/png';
+          const cartoonImage = `data:${mimeType};base64,${part.inlineData.data}`;
+          console.log('[ImageGen] Cartoon generated successfully');
+          return { success: true, cartoonImage };
+        }
+      }
+    }
+
+    console.log('[ImageGen] No image in response, falling back to CSS');
     return { success: false, error: 'No image generated' };
   } catch (error) {
     console.error('[ImageGen] Error:', error);

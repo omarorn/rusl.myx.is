@@ -18,8 +18,8 @@ image.post('/cartoon', async (c) => {
       return c.json({ error: 'Mynd vantar' }, 400);
     }
 
-    // Use Cloudflare AI binding
-    const result = await generateCartoonImage(imageBase64, env.AI || null, style || 'cute');
+    // Use Gemini API for cartoon generation
+    const result = await generateCartoonImage(imageBase64, env.GEMINI_API_KEY || null, style || 'cute');
 
     if (!result.success) {
       // Return graceful failure - frontend will use CSS filter instead

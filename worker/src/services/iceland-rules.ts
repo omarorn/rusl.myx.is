@@ -142,13 +142,13 @@ export type { RegionInfo };
 export function checkOverrides(itemText: string | undefined | null): BinType | null {
   if (!itemText) return null;
   const lowerText = itemText.toLowerCase();
-  
+
   for (const [keyword, bin] of Object.entries(ICELAND_OVERRIDES)) {
     if (lowerText.includes(keyword)) {
       return bin;
     }
   }
-  
+
   return null;
 }
 

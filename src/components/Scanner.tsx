@@ -125,7 +125,16 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
     if (isLoading) return;
 
     const image = captureImage();
-    if (!image) return;
+    if (!image) {
+      addLog('Gat ekki tekið mynd - reyndu aftur', '❌', 'error');
+      return;
+    }
+
+    // Check if image is too small (likely black/empty)
+    if (image.length < 5000) {
+      addLog('Mynd of lítil - bíddu eftir myndavél', '⚠️', 'error');
+      return;
+    }
 
     setCurrentImage(image);
     setOverlayImage(null);
