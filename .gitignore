@@ -79,5 +79,6 @@ credentials.json
 token.json
 scripts/rclone-setup.bat
 .claude/commands/todo-oom.md
-.gitignore
-.gitignore
+
+# Git worktrees (isolated workspaces)
+.worktrees/
