@@ -49,19 +49,25 @@ quiz.get('/random', async (c) => {
   const env = c.env;
 
   try {
-    // Get a quiz image, prioritizing:
-    // 1. Newer images (higher created_at)
-    // 2. Less shown images (lower times_shown)
-    // Uses weighted scoring: newer + less shown = higher priority
-    // Random factor added to prevent always showing the exact same image
+    // Get total count of approved images
+    const countResult = await env.DB.prepare(
+      'SELECT COUNT(*) as count FROM quiz_images WHERE approved = 1'
+    ).first<{ count: number }>();
+
+    const totalImages = countResult?.count || 0;
+    if (totalImages === 0) {
+      return c.json({ error: 'Engar myndir í gagnagrunni' }, 404);
+    }
+
+    // Use truly random selection with OFFSET
+    const randomOffset = Math.floor(Math.random() * totalImages);
+
     const image = await env.DB.prepare(`
       SELECT id, image_key, item, bin, reason, times_shown, times_correct
       FROM quiz_images
       WHERE approved = 1
-      ORDER BY
-        (created_at / 1000000000.0) - (times_shown * 10) + (RANDOM() % 100) DESC
-      LIMIT 1
-    `).first<QuizImage>();
+      LIMIT 1 OFFSET ?
+    `).bind(randomOffset).first<QuizImage>();
 
     if (!image) {
       return c.json({ error: 'Engar myndir í gagnagrunni' }, 404);
@@ -346,6 +352,85 @@ quiz.delete('/duplicates', async (c) => {
   } catch (err) {
     console.error('Quiz delete duplicates error:', err);
     return c.json({ error: 'Villa við að eyða tvítekningum' }, 500);
+  }
+});
+
+// GET /api/quiz/orphans - Find orphan images (in DB but not in R2)
+quiz.get('/orphans', async (c) => {
+  const env = c.env;
+
+  try {
+    // Get all images from database
+    const images = await env.DB.prepare(
+      'SELECT id, image_key, item, bin FROM quiz_images'
+    ).all<{ id: string; image_key: string; item: string; bin: string }>();
+
+    const orphans: Array<{ id: string; image_key: string; item: string; bin: string }> = [];
+
+    // Check each image exists in R2
+    for (const img of images.results || []) {
+      try {
+        const object = await env.IMAGES.head(img.image_key);
+        if (!object) {
+          orphans.push(img);
+        }
+      } catch {
+        orphans.push(img);
+      }
+    }
+
+    return c.json({
+      success: true,
+      orphans,
+      total: orphans.length,
+      totalImages: images.results?.length || 0,
+    });
+  } catch (err) {
+    console.error('Quiz orphans error:', err);
+    return c.json({ error: 'Villa við að finna munaðarlausar myndir' }, 500);
+  }
+});
+
+// DELETE /api/quiz/orphans - Remove orphan images from database
+quiz.delete('/orphans', async (c) => {
+  const env = c.env;
+
+  try {
+    const { password } = await c.req.json<{ password: string }>();
+
+    if (password !== 'bobba') {
+      return c.json({ error: 'Rangt lykilorð' }, 403);
+    }
+
+    // Get all images from database
+    const images = await env.DB.prepare(
+      'SELECT id, image_key FROM quiz_images'
+    ).all<{ id: string; image_key: string }>();
+
+    let deletedCount = 0;
+
+    // Check each image exists in R2, delete from DB if not
+    for (const img of images.results || []) {
+      try {
+        const object = await env.IMAGES.head(img.image_key);
+        if (!object) {
+          await env.DB.prepare('DELETE FROM quiz_images WHERE id = ?').bind(img.id).run();
+          deletedCount++;
+        }
+      } catch {
+        await env.DB.prepare('DELETE FROM quiz_images WHERE id = ?').bind(img.id).run();
+        deletedCount++;
+      }
+    }
+
+    return c.json({
+      success: true,
+      message: `${deletedCount} munaðarlausar myndir eyddar`,
+      deletedCount,
+    });
+  } catch (err) {
+    console.error('Quiz delete orphans error:', err);
+    return c.json({ error: 'Villa við að eyða munaðarlausum myndum' }, 500);
   }
 });
 
