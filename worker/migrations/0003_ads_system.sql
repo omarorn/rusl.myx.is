@@ -93,8 +93,8 @@ CREATE TABLE IF NOT EXISTS ad_stats_daily (
 -- Insert initial sponsors (Litla Gámaleigan and 2076)
 INSERT OR IGNORE INTO sponsors (id, name, name_is, logo_url, website_url, category, is_active, created_at)
 VALUES
-  ('sponsor_litla', 'Litla Gámaleigan', 'Litla Gámaleigan', 'https://litla.gamaleigan.is/logo.svg', 'https://litla.gamaleigan.is', 'recycling', 1, unixepoch()),
-  ('sponsor_2076', '2076 ehf', '2076 ehf', 'https://2076.is/logo.svg', 'https://2076.is', 'sustainability', 1, unixepoch());
+  ('sponsor_litla', 'Litla Gámaleigan', 'Litla Gámaleigan', 'data:image/svg+xml,%3Csvg xmlns=''http://www.w3.org/2000/svg'' viewBox=''0 0 100 100''%3E%3Crect fill=''%232563eb'' width=''100'' height=''100'' rx=''10''/%3E%3Ctext x=''50'' y=''55'' text-anchor=''middle'' font-family=''Arial, sans-serif'' font-size=''36'' font-weight=''bold'' fill=''white''%3ELG%3C/text%3E%3C/svg%3E', 'https://litla.gamaleigan.is', 'recycling', 1, unixepoch()),
+  ('sponsor_2076', '2076 ehf', '2076 ehf', 'data:image/svg+xml,%3Csvg xmlns=''http://www.w3.org/2000/svg'' viewBox=''0 0 100 100''%3E%3Crect fill=''%2310b981'' width=''100'' height=''100'' rx=''10''/%3E%3Ctext x=''50'' y=''60'' text-anchor=''middle'' font-family=''Arial, sans-serif'' font-size=''28'' font-weight=''bold'' fill=''white''%3E2076%3C/text%3E%3C/svg%3E', 'https://2076.is', 'sustainability', 1, unixepoch());
 
 -- Insert initial campaigns
 INSERT OR IGNORE INTO campaigns (id, sponsor_id, name, headline_is, body_is, cta_text_is, cta_url, start_date, end_date, placement, priority, status, created_at)
