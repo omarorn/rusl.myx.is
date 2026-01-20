@@ -22,10 +22,11 @@ const SORPA_BIN_INFO: Record<string, { name: string; icon: string }> = {
 
 interface TripScreenProps {
   onScanItem: () => void;  // Callback to open scanner
+  onClose: () => void;     // Callback to close trip screen
   lastScannedItem?: { item: string; bin: string; confidence: number };
 }
 
-export function TripScreen({ onScanItem, lastScannedItem }: TripScreenProps) {
+export function TripScreen({ onScanItem, onClose, lastScannedItem }: TripScreenProps) {
   const [trip, setTrip] = useState<SorpaTrip | null>(null);
   const [items, setItems] = useState<TripItem[]>([]);
   const [stations, setStations] = useState<SorpaStation[]>([]);
@@ -111,100 +112,119 @@ export function TripScreen({ onScanItem, lastScannedItem }: TripScreenProps) {
 
   if (!trip) {
     return (
-      <div className="p-4 space-y-4">
-        <h2 className="text-xl font-bold">Ferð á SORPA</h2>
+      <div className="h-full flex flex-col bg-gray-100">
+        {/* Header */}
+        <header className="safe-top bg-purple-600 text-white p-3 flex items-center justify-between shadow-lg">
+          <button onClick={onClose} className="text-xl p-1" title="Til baka">←</button>
+          <h1 className="text-lg font-bold">🚗 Ferð á SORPA</h1>
+          <div className="w-8" /> {/* Spacer for alignment */}
+        </header>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Veldu stöð</label>
-          <select
-            value={selectedStation}
-            onChange={(e) => setSelectedStation(e.target.value)}
-            className="w-full p-2 border rounded-lg"
+        <main className="flex-1 overflow-auto p-4 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Veldu stöð</label>
+            <select
+              value={selectedStation}
+              onChange={(e) => setSelectedStation(e.target.value)}
+              className="w-full p-2 border rounded-lg"
+            >
+              <option value="">Velja síðar...</option>
+              {stations.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={handleStartTrip}
+            disabled={loading}
+            className="w-full py-3 bg-green-600 text-white rounded-lg font-medium"
           >
-            <option value="">Velja síðar...</option>
-            {stations.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-        </div>
+            {loading ? 'Hleður...' : 'Hefja ferð'}
+          </button>
 
-        <button
-          onClick={handleStartTrip}
-          disabled={loading}
-          className="w-full py-3 bg-green-600 text-white rounded-lg font-medium"
-        >
-          {loading ? 'Hleður...' : 'Hefja ferð'}
-        </button>
-
-        {error && <p className="text-red-500">{error}</p>}
+          {error && <p className="text-red-500">{error}</p>}
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">
-          {trip.status === 'completed' ? 'Ferð lokið' : 'Ferð í vinnslu'}
-        </h2>
-        <span className="text-sm text-gray-500">{items.length} hlutir</span>
-      </div>
+    <div className="h-full flex flex-col bg-gray-100">
+      {/* Header */}
+      <header className="safe-top bg-purple-600 text-white p-3 flex items-center justify-between shadow-lg">
+        <button onClick={onClose} className="text-xl p-1" title="Til baka">←</button>
+        <h1 className="text-lg font-bold">
+          {trip.status === 'completed' ? '✅ Ferð lokið' : '🚗 Ferð í vinnslu'}
+        </h1>
+        <span className="text-sm">{items.length} hlutir</span>
+      </header>
 
-      {trip.status === 'loading' && (
-        <button
-          onClick={onScanItem}
-          className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium flex items-center justify-center gap-2"
-        >
-          <span>📷</span> Skanna hlut
-        </button>
-      )}
+      <main className="flex-1 overflow-auto p-4 space-y-4">
+        {trip.status === 'loading' && (
+          <button
+            onClick={onScanItem}
+            className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium flex items-center justify-center gap-2"
+          >
+            <span>📷</span> Skanna hlut
+          </button>
+        )}
 
-      {/* Items grouped by ramp */}
-      <div className="space-y-4">
-        {Object.entries(itemsByRamp)
-          .sort(([a], [b]) => Number(a) - Number(b))
-          .map(([ramp, rampItems]) => (
-            <div key={ramp} className="border rounded-lg p-3">
-              <h3 className="font-medium mb-2">
-                {Number(ramp) === 0 ? 'Opið svæði' : `Rampur ${ramp}`}
-              </h3>
-              <ul className="space-y-2">
-                {rampItems.map(item => {
-                  const binInfo = SORPA_BIN_INFO[item.sorpa_bin] || { name: item.sorpa_bin, icon: '❓' };
-                  return (
-                    <li key={item.id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                      <div className="flex items-center gap-2">
-                        <span>{binInfo.icon}</span>
-                        <div>
-                          <p className="font-medium">{item.item_name}</p>
-                          <p className="text-sm text-gray-500">{binInfo.name}</p>
+        {/* Items grouped by ramp */}
+        <div className="space-y-4">
+          {Object.entries(itemsByRamp)
+            .sort(([a], [b]) => Number(a) - Number(b))
+            .map(([ramp, rampItems]) => (
+              <div key={ramp} className="bg-white border rounded-lg p-3 shadow-sm">
+                <h3 className="font-medium mb-2">
+                  {Number(ramp) === 0 ? 'Opið svæði' : `Rampur ${ramp}`}
+                </h3>
+                <ul className="space-y-2">
+                  {rampItems.map(item => {
+                    const binInfo = SORPA_BIN_INFO[item.sorpa_bin] || { name: item.sorpa_bin, icon: '?' };
+                    return (
+                      <li key={item.id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                        <div className="flex items-center gap-2">
+                          <span>{binInfo.icon}</span>
+                          <div>
+                            <p className="font-medium">{item.item_name}</p>
+                            <p className="text-sm text-gray-500">{binInfo.name}</p>
+                          </div>
                         </div>
-                      </div>
-                      {trip.status === 'loading' && (
-                        <button
-                          onClick={() => handleRemoveItem(item.id)}
-                          className="text-red-500 text-sm"
-                        >
-                          Fjarlægja
-                        </button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-      </div>
+                        {trip.status === 'loading' && (
+                          <button
+                            onClick={() => handleRemoveItem(item.id)}
+                            className="text-red-500 text-sm"
+                          >
+                            Fjarlægja
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+        </div>
 
-      {trip.status === 'loading' && items.length > 0 && (
-        <button
-          onClick={handleComplete}
-          disabled={loading}
-          className="w-full py-3 bg-green-600 text-white rounded-lg font-medium"
-        >
-          {loading ? 'Hleður...' : 'Ljúka ferð'}
-        </button>
-      )}
+        {items.length === 0 && (
+          <div className="text-center text-gray-500 py-8">
+            <p className="text-4xl mb-2">📦</p>
+            <p>Engir hlutir ennþá</p>
+            <p className="text-sm">Skannaðu hluti til að bæta þeim við ferðina</p>
+          </div>
+        )}
+
+        {trip.status === 'loading' && items.length > 0 && (
+          <button
+            onClick={handleComplete}
+            disabled={loading}
+            className="w-full py-3 bg-green-600 text-white rounded-lg font-medium"
+          >
+            {loading ? 'Hleður...' : 'Ljúka ferð'}
+          </button>
+        )}
+      </main>
     </div>
   );
 }

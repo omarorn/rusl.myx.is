@@ -36,9 +36,10 @@ interface ScannerProps {
   onOpenLive: () => void;
   onOpenStats: () => void;
   onOpenSettings: () => void;
+  onOpenTrip?: () => void;
 }
 
-export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings }: ScannerProps) {
+export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, onOpenTrip }: ScannerProps) {
   const { videoRef, canvasRef, isStreaming, error, startCamera, captureImage } = useCamera();
   const [isLoading, setIsLoading] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -215,6 +216,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings }:
           <button onClick={onOpenLive} className="text-xl p-1" title="Talandi lýsing">🔊</button>
           <button onClick={onOpenQuiz} className="text-xl p-1" title="Leikur">🎮</button>
           <button onClick={onOpenStats} className="text-xl p-1" title="Tölfræði">📊</button>
+          {onOpenTrip && <button onClick={onOpenTrip} className="text-xl p-1" title="Ferð">🚗</button>}
           <button onClick={onOpenSettings} className="text-xl p-1" title="Stillingar">⚙️</button>
         </div>
       </header>
