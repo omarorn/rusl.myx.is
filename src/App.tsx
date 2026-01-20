@@ -6,8 +6,9 @@ import { LiveMode } from './components/LiveMode';
 import { WelcomeIntro } from './components/WelcomeIntro';
 import { Settings } from './components/Settings';
 import { Admin } from './components/Admin';
+import { TripScreen } from './components/TripScreen';
 
-type View = 'intro' | 'scanner' | 'stats' | 'quiz' | 'live' | 'settings' | 'admin';
+type View = 'intro' | 'scanner' | 'stats' | 'quiz' | 'live' | 'settings' | 'admin' | 'trip';
 
 // Map hash routes to views
 const ROUTES: Record<string, View> = {
@@ -17,6 +18,7 @@ const ROUTES: Record<string, View> = {
   '#/live': 'live',
   '#/settings': 'settings',
   '#/admin': 'admin',
+  '#/trip': 'trip',
   '#/': 'scanner',
   '': 'scanner',
 };
@@ -69,6 +71,7 @@ export default function App() {
       live: '#/live',
       settings: '#/settings',
       admin: '#/admin',
+      trip: '#/trip',
     };
     window.location.hash = hashMap[newView];
     setView(newView);
@@ -92,6 +95,7 @@ export default function App() {
           onOpenLive={() => navigateTo('live')}
           onOpenStats={() => navigateTo('stats')}
           onOpenSettings={() => navigateTo('settings')}
+          onOpenTrip={() => navigateTo('trip')}
         />
       )}
       {view === 'stats' && <Stats onClose={() => navigateTo('scanner')} />}
@@ -99,6 +103,12 @@ export default function App() {
       {view === 'live' && <LiveMode onClose={() => navigateTo('scanner')} />}
       {view === 'settings' && <Settings onClose={() => navigateTo('scanner')} />}
       {view === 'admin' && <Admin onClose={() => navigateTo('scanner')} />}
+      {view === 'trip' && (
+        <TripScreen
+          onScanItem={() => navigateTo('scanner')}
+          onClose={() => navigateTo('scanner')}
+        />
+      )}
     </div>
   );
 }
