@@ -42,7 +42,7 @@ interface ScannerProps {
 }
 
 export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, onOpenTrip }: ScannerProps) {
-  const { videoRef, canvasRef, isStreaming, error, startCamera, captureImage } = useCamera();
+  const { videoRef, canvasRef, isStreaming, error, startCamera, stopCamera, captureImage } = useCamera();
   const [isLoading, setIsLoading] = useState(false);
   const [pendingCount, setPendingCount] = useState(0); // Track queued images
   const [logs, setLogs] = useState<LogEntry[]>([]);

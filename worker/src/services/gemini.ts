@@ -68,11 +68,11 @@ PABBA-BRANDARI: Bættu við fyndnum "fun_fact" brandara um rusl eða endurvinnsl
 
 Svaraðu AÐEINS með JSON:
 {
-  "item": "nafn aðalhlutarins á íslensku",
+  "item": "nafn aðalhlutarins á íslensku (t.d. 'Gosdós', 'Pappakassi')",
   "bin": "paper|plastic|food|mixed|recycling_center|deposit",
-  "reason": "stutt skýring á íslensku",
+  "reason": "náttúruleg íslensk setning sem útskýrir flokkun, eins og þú værir að tala við manneskju (t.d. 'Gosdósir með skilagjald skila þú í Endurvinnslan og færð peningana til baka!' eða 'Pappakassar fara í bláu tunnuna, en mundu að brjóta þá saman!')",
   "confidence": 0.0-1.0,
-  "fun_fact": "pabba-brandari eða fyndið fact um rusl",
+  "fun_fact": "stuttur pabba-brandari um rusl eða endurvinnslu á íslensku",
   "is_wide_shot": true/false,
   "all_objects": [
     {

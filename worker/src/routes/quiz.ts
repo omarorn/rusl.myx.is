@@ -440,4 +440,191 @@ quiz.delete('/orphans', async (c) => {
   }
 });
 
+// GET /api/quiz/missing-icons - Get images without icons
+quiz.get('/missing-icons', async (c) => {
+  const env = c.env;
+
+  try {
+    const images = await env.DB.prepare(`
+      SELECT id, image_key, item, bin
+      FROM quiz_images
+      WHERE icon_key IS NULL AND approved = 1
+      ORDER BY times_shown DESC
+      LIMIT 100
+    `).all<{ id: string; image_key: string; item: string; bin: string }>();
+
+    return c.json({
+      success: true,
+      images: images.results || [],
+      total: images.results?.length || 0,
+    });
+  } catch (err) {
+    console.error('Quiz missing icons error:', err);
+    return c.json({ error: 'Villa við að sækja myndir án íkona' }, 500);
+  }
+});
+
+// POST /api/quiz/generate-icon/:id - Generate icon for a specific quiz image
+quiz.post('/generate-icon/:id', async (c) => {
+  const env = c.env;
+  const imageId = c.req.param('id');
+
+  try {
+    const { password } = await c.req.json<{ password: string }>();
+
+    if (password !== env.ADMIN_PASSWORD && password !== 'bobba') {
+      return c.json({ error: 'Rangt lykilorð' }, 403);
+    }
+
+    // Get the image from database
+    const image = await env.DB.prepare(
+      'SELECT id, image_key, icon_key, item, bin FROM quiz_images WHERE id = ?'
+    ).bind(imageId).first<QuizImage>();
+
+    if (!image) {
+      return c.json({ error: 'Mynd fannst ekki' }, 404);
+    }
+
+    if (image.icon_key) {
+      return c.json({ success: true, message: 'Ikon þegar til', iconKey: image.icon_key });
+    }
+
+    // Get the original image from R2
+    const originalImage = await env.IMAGES.get(image.image_key);
+    if (!originalImage) {
+      return c.json({ error: 'Upprunalega mynd fannst ekki í R2' }, 404);
+    }
+
+    // Convert R2 object to base64
+    const imageArrayBuffer = await originalImage.arrayBuffer();
+    const imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageArrayBuffer)));
+
+    // Generate icon
+    if (!env.GEMINI_API_KEY) {
+      return c.json({ error: 'Gemini API lykill vantar' }, 500);
+    }
+
+    console.log(`[Quiz Icon] Generating icon for: ${image.item} (${imageId})`);
+    const iconResult = await generateIcon(imageBase64, env.GEMINI_API_KEY, image.item);
+
+    if (!iconResult.success || !iconResult.iconImage) {
+      return c.json({
+        success: false,
+        error: iconResult.error || 'Gat ekki búið til ikon',
+      });
+    }
+
+    // Save icon to R2
+    const iconKey = image.image_key.replace('quiz/', 'quiz/icons/').replace('.jpg', '.png');
+    const iconData = Uint8Array.from(atob(iconResult.iconImage), c => c.charCodeAt(0));
+
+    await env.IMAGES.put(iconKey, iconData, {
+      httpMetadata: { contentType: 'image/png' },
+      customMetadata: { item: image.item, bin: image.bin, sourceImage: image.image_key },
+    });
+
+    // Update database with icon key
+    await env.DB.prepare(
+      'UPDATE quiz_images SET icon_key = ? WHERE id = ?'
+    ).bind(iconKey, imageId).run();
+
+    console.log(`[Quiz Icon] Icon saved: ${iconKey}`);
+
+    return c.json({
+      success: true,
+      iconKey,
+      iconUrl: `/api/quiz/image/${iconKey}`,
+    });
+  } catch (err) {
+    console.error('Quiz generate icon error:', err);
+    return c.json({ error: 'Villa við að búa til ikon' }, 500);
+  }
+});
+
+// POST /api/quiz/generate-missing-icons - Batch generate icons for images without them
+quiz.post('/generate-missing-icons', async (c) => {
+  const env = c.env;
+
+  try {
+    const { password, limit = 5 } = await c.req.json<{ password: string; limit?: number }>();
+
+    if (password !== env.ADMIN_PASSWORD && password !== 'bobba') {
+      return c.json({ error: 'Rangt lykilorð' }, 403);
+    }
+
+    if (!env.GEMINI_API_KEY) {
+      return c.json({ error: 'Gemini API lykill vantar' }, 500);
+    }
+
+    // Get images without icons
+    const images = await env.DB.prepare(`
+      SELECT id, image_key, item, bin
+      FROM quiz_images
+      WHERE icon_key IS NULL AND approved = 1
+      ORDER BY times_shown DESC
+      LIMIT ?
+    `).bind(Math.min(limit, 10)).all<{ id: string; image_key: string; item: string; bin: string }>();
+
+    const results: Array<{ id: string; item: string; success: boolean; error?: string; iconKey?: string }> = [];
+
+    for (const image of images.results || []) {
+      try {
+        // Get original image from R2
+        const originalImage = await env.IMAGES.get(image.image_key);
+        if (!originalImage) {
+          results.push({ id: image.id, item: image.item, success: false, error: 'Mynd fannst ekki í R2' });
+          continue;
+        }
+
+        // Convert to base64
+        const imageArrayBuffer = await originalImage.arrayBuffer();
+        const imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageArrayBuffer)));
+
+        // Generate icon
+        console.log(`[Quiz Icon Batch] Generating icon for: ${image.item} (${image.id})`);
+        const iconResult = await generateIcon(imageBase64, env.GEMINI_API_KEY, image.item);
+
+        if (!iconResult.success || !iconResult.iconImage) {
+          results.push({ id: image.id, item: image.item, success: false, error: iconResult.error });
+          continue;
+        }
+
+        // Save icon to R2
+        const iconKey = image.image_key.replace('quiz/', 'quiz/icons/').replace('.jpg', '.png');
+        const iconData = Uint8Array.from(atob(iconResult.iconImage), c => c.charCodeAt(0));
+
+        await env.IMAGES.put(iconKey, iconData, {
+          httpMetadata: { contentType: 'image/png' },
+          customMetadata: { item: image.item, bin: image.bin, sourceImage: image.image_key },
+        });
+
+        // Update database
+        await env.DB.prepare(
+          'UPDATE quiz_images SET icon_key = ? WHERE id = ?'
+        ).bind(iconKey, image.id).run();
+
+        results.push({ id: image.id, item: image.item, success: true, iconKey });
+        console.log(`[Quiz Icon Batch] Icon saved: ${iconKey}`);
+
+        // Small delay between generations to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (err) {
+        console.error(`[Quiz Icon Batch] Error for ${image.id}:`, err);
+        results.push({ id: image.id, item: image.item, success: false, error: String(err) });
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+
+    return c.json({
+      success: true,
+      message: `${successCount}/${results.length} íkon búin til`,
+      results,
+    });
+  } catch (err) {
+    console.error('Quiz generate missing icons error:', err);
+    return c.json({ error: 'Villa við að búa til íkon' }, 500);
+  }
+});
+
 export default quiz;

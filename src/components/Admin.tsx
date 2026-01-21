@@ -8,6 +8,8 @@ import {
   setAdminPassword,
   clearAdminPassword,
   getQuizImageUrl,
+  generateMissingIcons,
+  getMissingIcons,
   type AdminImage,
   type AdminStatsResponse,
 } from '../services/api';
@@ -42,6 +44,9 @@ export function Admin({ onClose }: AdminProps) {
   const [editingImage, setEditingImage] = useState<AdminImage | null>(null);
   const [editForm, setEditForm] = useState({ item: '', bin: '', reason: '' });
   const [lightboxImage, setLightboxImage] = useState<AdminImage | null>(null);
+  const [missingIconsCount, setMissingIconsCount] = useState<number | null>(null);
+  const [isGeneratingIcons, setIsGeneratingIcons] = useState(false);
+  const [iconGenMessage, setIconGenMessage] = useState<string | null>(null);
 
   const loadImages = useCallback(async () => {
     setLoading(true);
@@ -60,6 +65,32 @@ export function Admin({ onClose }: AdminProps) {
     if (result.success) {
       setStats(result);
     }
+    // Also load missing icons count
+    const missingResult = await getMissingIcons();
+    if (missingResult.success) {
+      setMissingIconsCount(missingResult.total || 0);
+    }
+  };
+
+  const handleGenerateIcons = async () => {
+    setIsGeneratingIcons(true);
+    setIconGenMessage(null);
+    try {
+      const result = await generateMissingIcons(password, 5);
+      if (result.success) {
+        setIconGenMessage(result.message || 'Íkon búin til');
+        // Reload missing icons count
+        const missingResult = await getMissingIcons();
+        if (missingResult.success) {
+          setMissingIconsCount(missingResult.total || 0);
+        }
+      } else {
+        setIconGenMessage(result.error || 'Villa');
+      }
+    } catch (err) {
+      setIconGenMessage('Villa við að búa til íkon');
+    }
+    setIsGeneratingIcons(false);
   };
 
   useEffect(() => {
@@ -256,6 +287,39 @@ export function Admin({ onClose }: AdminProps) {
               </div>
             ))}
           </div>
+
+          {/* Icon generation section */}
+          <div className="mt-6">
+            <h3 className="text-lg font-bold mb-3">🎨 Íkon búnaður</h3>
+            <div className="bg-gray-800 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <span className="text-gray-400">Myndir án íkona: </span>
+                  <span className={missingIconsCount === 0 ? 'text-green-400' : 'text-yellow-400'}>
+                    {missingIconsCount ?? '...'}
+                  </span>
+                </div>
+                <button
+                  onClick={handleGenerateIcons}
+                  disabled={isGeneratingIcons || missingIconsCount === 0}
+                  className={`px-4 py-2 rounded font-medium ${
+                    isGeneratingIcons || missingIconsCount === 0
+                      ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                      : 'bg-purple-600 hover:bg-purple-500 text-white'
+                  }`}
+                >
+                  {isGeneratingIcons ? '⏳ Bý til...' : '🎨 Búa til 5 íkon'}
+                </button>
+              </div>
+              {iconGenMessage && (
+                <div className={`p-3 rounded text-sm ${
+                  iconGenMessage.includes('Villa') ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
+                }`}>
+                  {iconGenMessage}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -442,12 +506,31 @@ export function Admin({ onClose }: AdminProps) {
           >
             ×
           </button>
-          <div className="max-w-full max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
-            <img
-              src={getQuizImageUrl(lightboxImage.image_key)}
-              alt={lightboxImage.item}
-              className="max-w-full max-h-[80vh] object-contain rounded-xl"
-            />
+          {/* Show both images side by side if icon exists */}
+          <div
+            className={`flex gap-4 max-w-full ${lightboxImage.icon_key ? 'flex-row' : ''}`}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Original image */}
+            <div className="flex flex-col items-center">
+              <div className="text-white text-sm mb-2 opacity-70">📷 Upprunaleg</div>
+              <img
+                src={getQuizImageUrl(lightboxImage.image_key)}
+                alt={lightboxImage.item}
+                className={`${lightboxImage.icon_key ? 'max-h-[60vh]' : 'max-h-[70vh]'} max-w-full object-contain rounded-xl`}
+              />
+            </div>
+            {/* Icon image if exists */}
+            {lightboxImage.icon_key && (
+              <div className="flex flex-col items-center">
+                <div className="text-white text-sm mb-2 opacity-70">🎨 Teiknimynd</div>
+                <img
+                  src={getQuizImageUrl(lightboxImage.icon_key)}
+                  alt={`${lightboxImage.item} ikon`}
+                  className="max-h-[60vh] max-w-full object-contain rounded-xl bg-white"
+                />
+              </div>
+            )}
           </div>
           <div className="mt-4 text-center text-white">
             <div className="text-xl font-bold">{lightboxImage.item}</div>
@@ -456,6 +539,12 @@ export function Admin({ onClose }: AdminProps) {
                 {BIN_OPTIONS.find(b => b.value === lightboxImage.bin)?.icon} {BIN_OPTIONS.find(b => b.value === lightboxImage.bin)?.label || lightboxImage.bin}
               </span>
               <span className="text-gray-400">{Math.round(lightboxImage.confidence * 100)}%</span>
+              {lightboxImage.icon_key && (
+                <span className="text-green-400 text-sm">✓ Ikon til</span>
+              )}
+              {!lightboxImage.icon_key && (
+                <span className="text-yellow-400 text-sm">⚠ Vantar ikon</span>
+              )}
             </div>
             <p className="text-sm text-gray-400 mt-2 max-w-md">{lightboxImage.reason}</p>
           </div>
@@ -530,6 +619,7 @@ function ImageCard({
   onEdit: () => void;
 }) {
   const bin = BIN_OPTIONS.find((b) => b.value === image.bin);
+  const hasIcon = !!image.icon_key;
 
   return (
     <div
@@ -537,19 +627,43 @@ function ImageCard({
         selected ? 'ring-2 ring-green-500' : ''
       }`}
     >
-      <div className="relative">
-        <img
-          src={getQuizImageUrl(image.image_key)}
-          alt={image.item}
-          className="w-full h-40 object-cover cursor-zoom-in hover:opacity-90 transition-opacity"
-          onClick={onView}
-          title="Smelltu til að stækka"
-        />
+      {/* Images - side by side if icon exists */}
+      <div className={`relative ${hasIcon ? 'flex' : ''}`}>
+        {/* Original image */}
+        <div className={`relative ${hasIcon ? 'w-1/2' : 'w-full'}`}>
+          <img
+            src={getQuizImageUrl(image.image_key)}
+            alt={image.item}
+            className={`w-full ${hasIcon ? 'h-32' : 'h-40'} object-cover cursor-zoom-in hover:opacity-90 transition-opacity`}
+            onClick={onView}
+            title="Upprunaleg mynd"
+          />
+          {hasIcon && (
+            <div className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-1 rounded">
+              📷
+            </div>
+          )}
+        </div>
+        {/* Icon image */}
+        {hasIcon && (
+          <div className="relative w-1/2">
+            <img
+              src={getQuizImageUrl(image.icon_key!)}
+              alt={`${image.item} ikon`}
+              className="w-full h-32 object-contain bg-white cursor-zoom-in hover:opacity-90 transition-opacity"
+              onClick={onView}
+              title="Teiknimynd"
+            />
+            <div className="absolute bottom-1 right-1 bg-black/60 text-white text-xs px-1 rounded">
+              🎨
+            </div>
+          </div>
+        )}
         <input
           type="checkbox"
           checked={selected}
           onChange={onSelect}
-          className="absolute top-2 left-2 w-5 h-5 cursor-pointer"
+          className="absolute top-2 left-2 w-5 h-5 cursor-pointer z-10"
         />
         <div
           className={`absolute top-2 right-2 px-2 py-1 rounded text-xs ${

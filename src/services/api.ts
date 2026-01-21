@@ -320,6 +320,7 @@ export async function getSponsors(): Promise<{ success: boolean; sponsors: Spons
 export interface AdminImage {
   id: string;
   image_key: string;
+  icon_key?: string; // Cartoon icon version
   item: string;
   bin: string;
   reason: string;
@@ -454,6 +455,25 @@ export async function getAdminStats(): Promise<AdminStatsResponse> {
 
 export function getQuizImageUrl(imageKey: string): string {
   return `${API_BASE}/api/quiz/image/${imageKey}`;
+}
+
+// Generate missing icons for quiz images
+export async function generateMissingIcons(
+  password: string,
+  limit: number = 5
+): Promise<{ success: boolean; message?: string; results?: Array<{ id: string; item: string; success: boolean; error?: string; iconKey?: string }>; error?: string }> {
+  const response = await fetch(`${API_BASE}/api/quiz/generate-missing-icons`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password, limit }),
+  });
+  return response.json();
+}
+
+// Get quiz images missing icons
+export async function getMissingIcons(): Promise<{ success: boolean; images?: Array<{ id: string; image_key: string; item: string; bin: string }>; total?: number; error?: string }> {
+  const response = await fetch(`${API_BASE}/api/quiz/missing-icons`);
+  return response.json();
 }
 
 // Joke of the day API
