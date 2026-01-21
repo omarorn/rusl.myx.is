@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCamera } from '../hooks/useCamera';
-import { identifyItem, generateCartoon, type IdentifyResponse, type DetectedObject } from '../services/api';
+import { identifyItem, generateCartoon, getQuizImageUrl, type IdentifyResponse, type DetectedObject } from '../services/api';
 import { AdSlot } from './AdSlot';
 import { cropImageClient, drawCropOverlay } from '../utils/imageUtils';
 
@@ -16,10 +16,12 @@ interface HistoryEntry {
   id: string;
   timestamp: Date;
   image: string;
+  imageKey?: string; // R2 image key for persistent storage
   item: string;
   bin: string;
   binIcon: string;
   binColor: string;
+  result?: IdentifyResponse; // Full result for re-display
 }
 
 // Nano banana for scale - the ultimate size reference
@@ -53,6 +55,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
   const [showCartoon, setShowCartoon] = useState(true);  // Cartoon mode as default
   const [showAllObjects, setShowAllObjects] = useState(false);
   const [selectedObjectIndex, setSelectedObjectIndex] = useState(0);
+  const [lightboxEntry, setLightboxEntry] = useState<HistoryEntry | null>(null); // For viewing history items
   const logEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-capture with motion detection
@@ -95,10 +98,11 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
   useEffect(() => {
     if (history.length > 0) {
       try {
-        // Only save last 10 items, without full images (just metadata)
+        // Only save last 10 items, without full images (just metadata + imageKey for R2)
         const toSave = history.slice(0, 10).map(h => ({
           ...h,
           image: '', // Don't store full images - too much data
+          result: undefined, // Don't store full result - can be rebuilt from imageKey
         }));
         localStorage.setItem('scan_history', JSON.stringify(toSave));
       } catch (e) {
@@ -287,10 +291,12 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
           id: Date.now().toString(),
           timestamp: new Date(),
           image,
+          imageKey: response.imageKey, // Store R2 key for persistent access
           item: response.item,
           bin: response.binInfo?.name_is || 'Óþekkt',
           binIcon: response.binInfo?.icon || '🗑️',
           binColor: response.binInfo?.color || '#6b7280',
+          result: response, // Store full result for re-display
         };
         setHistory(prev => [entry, ...prev]);
 
@@ -696,31 +702,60 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
             </div>
           ) : (
             <div className="flex gap-2 overflow-x-auto pb-2">
-              {history.map(entry => (
-                <div
-                  key={entry.id}
-                  className="flex-shrink-0 w-24 bg-gray-800 rounded-lg overflow-hidden"
-                >
-                  <div className="relative">
-                    <img
-                      src={entry.image}
-                      alt={entry.item}
-                      className="w-full h-16 object-cover"
-                      style={showCartoon ? { filter: 'contrast(1.3) saturate(1.4) brightness(1.1)' } : {}}
-                    />
-                    {showCartoon && (
-                      <span className="absolute bottom-0 right-0 text-sm">{NANO_BANANA}</span>
-                    )}
-                  </div>
+              {history.map(entry => {
+                // Use R2 URL if available, otherwise fall back to base64
+                const imageUrl = entry.imageKey
+                  ? getQuizImageUrl(entry.imageKey)
+                  : entry.image;
+                const hasImage = entry.imageKey || entry.image;
+
+                return (
                   <div
-                    className="p-1 text-white text-center"
-                    style={{ backgroundColor: entry.binColor }}
+                    key={entry.id}
+                    className="flex-shrink-0 w-24 bg-gray-800 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-white/50 transition-all"
+                    onClick={() => {
+                      if (entry.result) {
+                        // Load full result into main view
+                        setCurrentResult(entry.result);
+                        setCurrentImage(entry.image || (entry.imageKey ? getQuizImageUrl(entry.imageKey) : null));
+                        setCartoonImage(null);
+                        setOverlayImage(null);
+                      } else if (hasImage) {
+                        // Just open lightbox for viewing
+                        setLightboxEntry(entry);
+                      }
+                    }}
                   >
-                    <div className="text-lg">{entry.binIcon}</div>
-                    <div className="text-xs truncate">{entry.item}</div>
+                    <div className="relative">
+                      {hasImage ? (
+                        <img
+                          src={imageUrl}
+                          alt={entry.item}
+                          className="w-full h-16 object-cover"
+                          style={showCartoon ? { filter: 'contrast(1.3) saturate(1.4) brightness(1.1)' } : {}}
+                        />
+                      ) : (
+                        <div className="w-full h-16 bg-gray-700 flex items-center justify-center text-2xl">
+                          {entry.binIcon}
+                        </div>
+                      )}
+                      {showCartoon && hasImage && (
+                        <span className="absolute bottom-0 right-0 text-sm">{NANO_BANANA}</span>
+                      )}
+                      {entry.imageKey && (
+                        <span className="absolute top-0 left-0 bg-green-500/80 text-xs px-1 rounded-br" title="Vistað í skýi">☁️</span>
+                      )}
+                    </div>
+                    <div
+                      className="p-1 text-white text-center"
+                      style={{ backgroundColor: entry.binColor }}
+                    >
+                      <div className="text-lg">{entry.binIcon}</div>
+                      <div className="text-xs truncate">{entry.item}</div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -728,6 +763,40 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
 
       {/* Footer safe area */}
       <div className="safe-bottom bg-gray-700" />
+
+      {/* Lightbox modal for viewing history images */}
+      {lightboxEntry && (
+        <div
+          className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4"
+          onClick={() => setLightboxEntry(null)}
+        >
+          <button
+            onClick={() => setLightboxEntry(null)}
+            className="absolute top-4 right-4 text-white text-3xl hover:text-gray-300"
+          >
+            ×
+          </button>
+          <div className="max-w-full max-h-[70vh] overflow-hidden rounded-xl" onClick={e => e.stopPropagation()}>
+            <img
+              src={lightboxEntry.imageKey ? getQuizImageUrl(lightboxEntry.imageKey) : lightboxEntry.image}
+              alt={lightboxEntry.item}
+              className="max-w-full max-h-[70vh] object-contain rounded-xl"
+              style={showCartoon ? { filter: 'contrast(1.3) saturate(1.4) brightness(1.1)' } : {}}
+            />
+          </div>
+          <div
+            className="mt-4 px-6 py-3 rounded-xl text-white text-center"
+            style={{ backgroundColor: lightboxEntry.binColor }}
+          >
+            <div className="text-3xl mb-1">{lightboxEntry.binIcon}</div>
+            <div className="text-xl font-bold">{lightboxEntry.item}</div>
+            <div className="text-sm opacity-80">{lightboxEntry.bin}</div>
+            <div className="text-xs opacity-60 mt-1">
+              {lightboxEntry.timestamp.toLocaleString('is-IS')}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

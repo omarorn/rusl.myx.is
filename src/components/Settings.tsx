@@ -6,8 +6,10 @@ interface SettingsProps {
   onOpenAdmin?: () => void;
 }
 
+const TIMER_OPTIONS = [3, 5, 10, 15, 30];
+
 export function Settings({ onClose, onOpenAdmin }: SettingsProps) {
-  const { language, region, setLanguage, setRegion } = useSettings();
+  const { language, region, quizTimer, setLanguage, setRegion, setQuizTimer } = useSettings();
 
   const regions: { id: Region; name: string }[] = [
     { id: 'sorpa', name: language === 'is' ? REGIONS_INFO.sorpa.name_is : REGIONS_INFO.sorpa.name_en },
@@ -88,6 +90,33 @@ export function Settings({ onClose, onOpenAdmin }: SettingsProps) {
             {language === 'is'
               ? 'Svæðið ákvarðar hvaða flokkunarreglur eru notaðar'
               : 'Region determines which sorting rules are used'}
+          </p>
+        </div>
+
+        {/* Quiz Timer */}
+        <div className="bg-white rounded-2xl p-4 shadow-md mb-4">
+          <h2 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+            ⏱️ {language === 'is' ? 'Tími per spurningu' : 'Time per question'}
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {TIMER_OPTIONS.map((seconds) => (
+              <button
+                key={seconds}
+                onClick={() => setQuizTimer(seconds)}
+                className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                  quizTimer === seconds
+                    ? 'bg-purple-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {seconds}s
+              </button>
+            ))}
+          </div>
+          <p className="text-sm text-gray-500 mt-3">
+            {language === 'is'
+              ? 'Hversu lengi hefur þú til að svara hverri spurningu í quiz'
+              : 'How long you have to answer each quiz question'}
           </p>
         </div>
 

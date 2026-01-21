@@ -12,6 +12,7 @@ import {
   type QuizAnswer,
   type QuizScore,
 } from '../services/api';
+import { useSettings } from '../context/SettingsContext';
 
 type GameMode = 'menu' | 'timed' | 'survival' | 'learning';
 type GameState = 'playing' | 'feedback' | 'gameover' | 'leaderboard';
@@ -23,6 +24,7 @@ interface QuizProps {
 const API_BASE = import.meta.env.PROD ? 'https://trash.myx.is' : 'http://localhost:8787';
 
 export function Quiz({ onClose }: QuizProps) {
+  const { quizTimer } = useSettings();
   const [mode, setMode] = useState<GameMode>('menu');
   const [gameState, setGameState] = useState<GameState>('playing');
   const [question, setQuestion] = useState<QuizQuestion | null>(null);
@@ -30,7 +32,7 @@ export function Quiz({ onClose }: QuizProps) {
   const [score, setScore] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [lives, setLives] = useState(3);
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [questionTimeLeft, setQuestionTimeLeft] = useState(quizTimer);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [leaderboard, setLeaderboard] = useState<QuizScore[]>([]);
@@ -49,6 +51,7 @@ export function Quiz({ onClose }: QuizProps) {
   const loadQuestion = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setQuestionTimeLeft(quizTimer); // Reset timer for new question
     try {
       const q = await getQuizQuestion();
       if ('error' in q) {
@@ -63,7 +66,7 @@ export function Quiz({ onClose }: QuizProps) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [quizTimer]);
 
   // Start game
   const startGame = useCallback((selectedMode: GameMode) => {
@@ -72,10 +75,10 @@ export function Quiz({ onClose }: QuizProps) {
     setTotalQuestions(0);
     setLives(3);
     setStreak(0);
-    setTimeLeft(selectedMode === 'timed' ? 60 : 0);
+    setQuestionTimeLeft(quizTimer);
     setGameState('playing');
     loadQuestion();
-  }, [loadQuestion]);
+  }, [loadQuestion, quizTimer]);
 
   // Submit answer
   const handleAnswer = async (selectedBin: string) => {
@@ -120,7 +123,7 @@ export function Quiz({ onClose }: QuizProps) {
   const endGame = async () => {
     setGameState('gameover');
     try {
-      await submitQuizScore(score, totalQuestions, mode, mode === 'timed' ? 60 - timeLeft : undefined);
+      await submitQuizScore(score, totalQuestions, mode);
       const lb = await getQuizLeaderboard(mode);
       setLeaderboard(lb.scores || []);
     } catch (err) {
@@ -128,14 +131,46 @@ export function Quiz({ onClose }: QuizProps) {
     }
   };
 
-  // Timer for timed mode
+  // Handle timeout - counts as wrong answer
+  const handleTimeout = useCallback(async () => {
+    if (!question || gameState !== 'playing') return;
+
+    setTotalQuestions(prev => prev + 1);
+    setStreak(0);
+
+    if (mode === 'survival') {
+      setLives(prev => prev - 1);
+    }
+
+    // Create a timeout answer - find the correct bin from options
+    const correctOption = question.options.find(o => o.bin === question.options[0]?.bin);
+    setAnswer({
+      correct: false,
+      correctAnswer: correctOption?.bin || 'mixed',
+      correctBinInfo: {
+        name_is: correctOption?.name || 'Blandaður úrgangur',
+        icon: correctOption?.icon || '🗑️',
+        color: correctOption?.color || '#6b7280'
+      },
+      item: question.item || 'Óþekktur hlutur',
+      reason: 'Tíminn rann út!',
+      points: 0,
+    });
+
+    setGameState('feedback');
+    setFeedbackTimer(3); // Shorter feedback for timeout
+    setIsPaused(false);
+  }, [question, gameState, mode]);
+
+  // Per-question timer (timed and survival modes)
   useEffect(() => {
-    if (mode !== 'timed' || gameState !== 'playing' || timeLeft <= 0) return;
+    // No timer in learning mode
+    if (mode === 'learning' || gameState !== 'playing' || questionTimeLeft <= 0) return;
 
     const timer = setInterval(() => {
-      setTimeLeft(prev => {
+      setQuestionTimeLeft(prev => {
         if (prev <= 1) {
-          endGame();
+          handleTimeout();
           return 0;
         }
         return prev - 1;
@@ -143,7 +178,7 @@ export function Quiz({ onClose }: QuizProps) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [mode, gameState, timeLeft]);
+  }, [mode, gameState, questionTimeLeft, handleTimeout]);
 
   // Check for game over in survival mode
   useEffect(() => {
@@ -160,12 +195,7 @@ export function Quiz({ onClose }: QuizProps) {
     const timer = setInterval(() => {
       setFeedbackTimer(prev => {
         if (prev <= 1) {
-          // Auto-advance
-          if (mode === 'timed' && timeLeft <= 0) {
-            endGame();
-          } else {
-            loadQuestion();
-          }
+          loadQuestion();
           return 5;
         }
         return prev - 1;
@@ -173,7 +203,7 @@ export function Quiz({ onClose }: QuizProps) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [gameState, isPaused, mode, lives, timeLeft, loadQuestion]);
+  }, [gameState, isPaused, mode, lives, loadQuestion]);
 
   // Handle delete scores
   const handleDeleteScores = async () => {
@@ -252,7 +282,7 @@ export function Quiz({ onClose }: QuizProps) {
           >
             <div className="text-3xl mb-2">⏱️</div>
             <div className="text-xl font-bold">Tímaþröng</div>
-            <div className="text-sm opacity-80">60 sekúndur - hversu mörg nærðu?</div>
+            <div className="text-sm opacity-80">{quizTimer} sek per spurningu</div>
           </button>
 
           <button
@@ -261,7 +291,7 @@ export function Quiz({ onClose }: QuizProps) {
           >
             <div className="text-3xl mb-2">❤️❤️❤️</div>
             <div className="text-xl font-bold">Þrjú líf</div>
-            <div className="text-sm opacity-80">Hversu langt kemstu?</div>
+            <div className="text-sm opacity-80">{quizTimer}s per spurningu - hversu langt kemstu?</div>
           </button>
 
           <button
@@ -553,9 +583,9 @@ export function Quiz({ onClose }: QuizProps) {
         <div className="flex items-center justify-between mb-2">
           <button onClick={() => setMode('menu')} className="text-xl">✕</button>
           <div className="text-xl font-bold">{score} stig</div>
-          {mode === 'timed' && (
-            <div className={`text-xl font-mono ${timeLeft <= 10 ? 'text-red-300 animate-pulse' : ''}`}>
-              {timeLeft}s
+          {(mode === 'timed' || mode === 'survival') && (
+            <div className={`text-xl font-mono ${questionTimeLeft <= 3 ? 'text-red-300 animate-pulse' : ''}`}>
+              {questionTimeLeft}s
             </div>
           )}
           {mode === 'survival' && (

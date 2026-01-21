@@ -6,8 +6,10 @@ export type Region = 'sorpa' | 'kalka' | 'akureyri';
 interface Settings {
   language: Language;
   region: Region;
+  quizTimer: number;
   setLanguage: (lang: Language) => void;
   setRegion: (region: Region) => void;
+  setQuizTimer: (seconds: number) => void;
 }
 
 const SettingsContext = createContext<Settings | null>(null);
@@ -21,12 +23,14 @@ const REGIONS_INFO = {
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>('is');
   const [region, setRegionState] = useState<Region>('sorpa');
+  const [quizTimer, setQuizTimerState] = useState<number>(3);
 
   // Load settings from localStorage on mount
   useEffect(() => {
     try {
       const savedLang = localStorage.getItem('rusl_language') as Language;
       const savedRegion = localStorage.getItem('rusl_region') as Region;
+      const savedQuizTimer = localStorage.getItem('rusl_quiz_timer');
 
       if (savedLang && (savedLang === 'is' || savedLang === 'en')) {
         setLanguageState(savedLang);
@@ -35,6 +39,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
       if (savedRegion && savedRegion in REGIONS_INFO) {
         setRegionState(savedRegion);
+      }
+
+      if (savedQuizTimer) {
+        const timer = parseInt(savedQuizTimer, 10);
+        if (timer >= 1 && timer <= 30) {
+          setQuizTimerState(timer);
+        }
       }
     } catch {
       // localStorage unavailable
@@ -55,8 +66,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     } catch { /* ignore */ }
   };
 
+  const setQuizTimer = (seconds: number) => {
+    setQuizTimerState(seconds);
+    try {
+      localStorage.setItem('rusl_quiz_timer', String(seconds));
+    } catch { /* ignore */ }
+  };
+
   return (
-    <SettingsContext.Provider value={{ language, region, setLanguage, setRegion }}>
+    <SettingsContext.Provider value={{ language, region, quizTimer, setLanguage, setRegion, setQuizTimer }}>
       {children}
     </SettingsContext.Provider>
   );
