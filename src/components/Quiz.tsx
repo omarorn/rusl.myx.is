@@ -606,16 +606,21 @@ export function Quiz({ onClose }: QuizProps) {
 
       {/* Question */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Image */}
+        {/* Image - prefer cartoon icon if available */}
         <div className="flex-1 relative bg-gray-900 min-h-0">
           {question && (
             <img
-              src={`${API_BASE}${question.imageUrl}`}
+              src={`${API_BASE}${question.iconUrl || question.imageUrl}`}
               alt="Hvað er þetta?"
               className="absolute inset-0 w-full h-full object-contain"
               onError={(e) => {
-                // Fallback if image doesn't load
-                (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="50" x="50" text-anchor="middle" font-size="40">📷</text></svg>';
+                // Fallback to original image if icon fails, then to placeholder
+                const target = e.target as HTMLImageElement;
+                if (question.iconUrl && target.src.includes(question.iconUrl)) {
+                  target.src = `${API_BASE}${question.imageUrl}`;
+                } else {
+                  target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="50" x="50" text-anchor="middle" font-size="40">📷</text></svg>';
+                }
               }}
             />
           )}

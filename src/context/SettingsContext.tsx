@@ -20,8 +20,20 @@ const REGIONS_INFO = {
   akureyri: { name_is: 'Akureyri', name_en: 'Akureyri' },
 };
 
+// Get default language based on domain
+function getDefaultLanguage(): Language {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    // trash.myx.is defaults to English, rusl.myx.is defaults to Icelandic
+    if (host.startsWith('trash.')) {
+      return 'en';
+    }
+  }
+  return 'is'; // Default to Icelandic (rusl.myx.is and localhost)
+}
+
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('is');
+  const [language, setLanguageState] = useState<Language>(getDefaultLanguage);
   const [region, setRegionState] = useState<Region>('sorpa');
   const [quizTimer, setQuizTimerState] = useState<number>(3);
 
@@ -35,7 +47,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       if (savedLang && (savedLang === 'is' || savedLang === 'en')) {
         setLanguageState(savedLang);
       }
-      // Default language is always Icelandic ('is')
+      // If no saved language, keep domain-based default
 
       if (savedRegion && savedRegion in REGIONS_INFO) {
         setRegionState(savedRegion);

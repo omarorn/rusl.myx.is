@@ -41,6 +41,7 @@ export function Admin({ onClose }: AdminProps) {
 
   const [editingImage, setEditingImage] = useState<AdminImage | null>(null);
   const [editForm, setEditForm] = useState({ item: '', bin: '', reason: '' });
+  const [lightboxImage, setLightboxImage] = useState<AdminImage | null>(null);
 
   const loadImages = useCallback(async () => {
     setLoading(true);
@@ -344,6 +345,7 @@ export function Admin({ onClose }: AdminProps) {
                       image={image}
                       selected={selectedIds.has(image.id)}
                       onSelect={() => toggleSelect(image.id)}
+                      onView={() => setLightboxImage(image)}
                       onApprove={() => handleApprove(image.id)}
                       onReject={() => handleReject(image.id)}
                       onDelete={() => handleDelete(image.id)}
@@ -427,6 +429,38 @@ export function Admin({ onClose }: AdminProps) {
           </div>
         </div>
       )}
+
+      {/* Lightbox modal for viewing full-size images */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4"
+          onClick={() => setLightboxImage(null)}
+        >
+          <button
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-4 right-4 text-white text-3xl hover:text-gray-300"
+          >
+            ×
+          </button>
+          <div className="max-w-full max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+            <img
+              src={getQuizImageUrl(lightboxImage.image_key)}
+              alt={lightboxImage.item}
+              className="max-w-full max-h-[80vh] object-contain rounded-xl"
+            />
+          </div>
+          <div className="mt-4 text-center text-white">
+            <div className="text-xl font-bold">{lightboxImage.item}</div>
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <span className={`px-2 py-1 rounded text-sm ${BIN_OPTIONS.find(b => b.value === lightboxImage.bin)?.color || 'bg-gray-600'}`}>
+                {BIN_OPTIONS.find(b => b.value === lightboxImage.bin)?.icon} {BIN_OPTIONS.find(b => b.value === lightboxImage.bin)?.label || lightboxImage.bin}
+              </span>
+              <span className="text-gray-400">{Math.round(lightboxImage.confidence * 100)}%</span>
+            </div>
+            <p className="text-sm text-gray-400 mt-2 max-w-md">{lightboxImage.reason}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -480,6 +514,7 @@ function ImageCard({
   image,
   selected,
   onSelect,
+  onView,
   onApprove,
   onReject,
   onDelete,
@@ -488,6 +523,7 @@ function ImageCard({
   image: AdminImage;
   selected: boolean;
   onSelect: () => void;
+  onView: () => void;
   onApprove: () => void;
   onReject: () => void;
   onDelete: () => void;
@@ -505,8 +541,9 @@ function ImageCard({
         <img
           src={getQuizImageUrl(image.image_key)}
           alt={image.item}
-          className="w-full h-40 object-cover cursor-pointer"
-          onClick={onSelect}
+          className="w-full h-40 object-cover cursor-zoom-in hover:opacity-90 transition-opacity"
+          onClick={onView}
+          title="Smelltu til að stækka"
         />
         <input
           type="checkbox"

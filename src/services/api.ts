@@ -99,7 +99,9 @@ export async function getStats(): Promise<UserStats> {
 export interface QuizQuestion {
   id: string;
   imageUrl: string;
+  iconUrl?: string; // Cartoon icon version (if available)
   imageKey: string;
+  iconKey?: string;
   item: string;
   options: Array<{
     bin: string;

@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { BIN_INFO } from '../services/iceland-rules';
+import { generateIcon } from '../services/gemini';
 
 const quiz = new Hono<{ Bindings: Env }>();
 
