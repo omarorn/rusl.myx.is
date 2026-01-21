@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { Env, UserStats } from '../types';
-import { generateJokeFromScans, type JokeResponse } from '../services/joke-generator';
+import { generateJokeFromScans, generateJokeBackground, type JokeResponse } from '../services/joke-generator';
 
 const stats = new Hono<{ Bindings: Env }>();
 
@@ -148,7 +148,38 @@ stats.get('/joke', async (c) => {
     return c.json(fallback);
   }
 
-  // Cache the joke
+  // Generate background image for the joke
+  try {
+    const backgroundBase64 = await generateJokeBackground(
+      jokeResponse.joke,
+      jokeResponse.basedOn,
+      c.env.GEMINI_API_KEY
+    );
+
+    if (backgroundBase64) {
+      // Save background to R2
+      const timestamp = Date.now();
+      const backgroundKey = `jokes/background_${timestamp}.png`;
+
+      // Convert base64 to binary
+      const base64Data = backgroundBase64.replace(/^data:image\/\w+;base64,/, '');
+      const binaryData = Uint8Array.from(atob(base64Data), char => char.charCodeAt(0));
+
+      await c.env.IMAGES.put(backgroundKey, binaryData, {
+        httpMetadata: { contentType: 'image/png' },
+        customMetadata: { joke: jokeResponse.joke.substring(0, 100) },
+      });
+
+      // Add background URL to response
+      jokeResponse.backgroundUrl = `/api/quiz/image/${backgroundKey}`;
+      console.log('[JokeOfDay] Background saved:', backgroundKey);
+    }
+  } catch (bgError) {
+    console.error('[JokeOfDay] Background generation failed:', bgError);
+    // Continue without background - not critical
+  }
+
+  // Cache the joke (with or without background)
   await c.env.CACHE.put(CACHE_KEY, JSON.stringify(jokeResponse), { expirationTtl: CACHE_TTL });
 
   return c.json(jokeResponse);

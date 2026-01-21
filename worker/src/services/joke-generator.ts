@@ -1,6 +1,7 @@
 // Joke generator service - generates AI jokes based on recent scans
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
+const GEMINI_IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent';
 
 interface RecentScan {
   item: string;
@@ -11,6 +12,7 @@ export interface JokeResponse {
   joke: string;
   basedOn: string[];
   generatedAt: string;
+  backgroundUrl?: string; // URL to generated background image
 }
 
 export async function generateJokeFromScans(
@@ -105,6 +107,99 @@ Svaraðu AÐEINS með JSON:
     };
   } catch (error) {
     console.error('[JokeGenerator] Error:', error);
+    return null;
+  }
+}
+
+/**
+ * Generate a stylish background image for a joke
+ * @param joke - The joke text to create a background for
+ * @param items - Items the joke is based on
+ * @param apiKey - Gemini API key
+ * @returns Base64 image data URL or null
+ */
+export async function generateJokeBackground(
+  joke: string,
+  items: string[],
+  apiKey: string
+): Promise<string | null> {
+  try {
+    if (!apiKey) {
+      console.error('[JokeBackground] No API key provided');
+      return null;
+    }
+
+    const itemsText = items.length > 0 ? items.join(', ') : 'recycling items';
+
+    const prompt = `Create a fun, colorful background image for a recycling joke display.
+
+THEME: ${itemsText}
+STYLE:
+- Bright, cheerful gradient background (greens, blues, or earth tones)
+- Subtle recycling-themed elements (leaves, recycling symbols, nature)
+- Cartoon/illustration style
+- NOT realistic - use flat design or vector style
+- Suitable for displaying text overlay
+- Dimensions: 16:9 landscape
+- Leave center area relatively simple for text
+
+The background should feel eco-friendly, fun, and appropriate for a recycling app.
+DO NOT include any text in the image.`;
+
+    const requestBody = {
+      contents: [{
+        parts: [{ text: prompt }],
+      }],
+      generationConfig: {
+        responseModalities: ['IMAGE', 'TEXT'],
+        temperature: 0.8,
+      },
+    };
+
+    console.log('[JokeBackground] Generating background for items:', itemsText);
+
+    const response = await fetch(`${GEMINI_IMAGE_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[JokeBackground] API error:', response.status, errorText.substring(0, 300));
+      return null;
+    }
+
+    const data = await response.json() as {
+      candidates?: Array<{
+        content?: {
+          parts?: Array<{
+            text?: string;
+            inlineData?: {
+              mimeType: string;
+              data: string;
+            };
+          }>;
+        };
+      }>;
+    };
+
+    // Find image in response parts
+    const parts = data?.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+      if (part.inlineData?.data) {
+        const mimeType = part.inlineData.mimeType || 'image/png';
+        console.log('[JokeBackground] Background generated successfully');
+        return `data:${mimeType};base64,${part.inlineData.data}`;
+      }
+    }
+
+    console.error('[JokeBackground] No image in response');
+    return null;
+  } catch (error) {
+    console.error('[JokeBackground] Error:', error);
     return null;
   }
 }

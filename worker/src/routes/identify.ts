@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Env, IdentifyRequest, IdentifyResponse, UserStats } from '../types';
 import { classifyItem } from '../services/classifier';
+import { generateIcon } from '../services/gemini';
 
 const identify = new Hono<{ Bindings: Env }>();
 
@@ -119,7 +120,7 @@ async function logScan(
   `).bind(userHash, item, bin, confidence, sveitarfelag, imageKey, lat, lng).run();
 }
 
-// Save image to R2 and quiz_images table
+// Save image to R2 and quiz_images table (with optional icon generation)
 async function saveQuizImage(
   r2: R2Bucket,
   db: D1Database,
@@ -128,8 +129,9 @@ async function saveQuizImage(
   bin: string,
   reason: string,
   confidence: number,
-  userHash: string
-): Promise<string | null> {
+  userHash: string,
+  geminiApiKey?: string
+): Promise<{ imageKey: string; iconKey: string | null } | null> {
   if (!item) return null;
 
   try {
@@ -139,25 +141,58 @@ async function saveQuizImage(
       .substring(0, 30);
     const timestamp = Date.now();
     const imageKey = `quiz/${sanitizedItem}_${bin}_${timestamp}.jpg`;
+    const iconKey = `quiz/icons/${sanitizedItem}_${bin}_${timestamp}.png`;
 
     // Convert base64 to binary
     const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
     const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
 
-    // Save to R2
+    // Save original image to R2
     await r2.put(imageKey, binaryData, {
       httpMetadata: { contentType: 'image/jpeg' },
       customMetadata: { item, bin, userHash },
     });
+    console.log(`[Quiz] Saved original image: ${imageKey}`);
+
+    // Generate and save icon (in background, don't block response)
+    let savedIconKey: string | null = null;
+    if (geminiApiKey) {
+      try {
+        console.log(`[Quiz] Generating icon for: ${item}`);
+        const iconResult = await generateIcon(imageBase64, geminiApiKey, item);
+
+        if (iconResult.success && iconResult.iconImage) {
+          // Convert icon base64 to binary
+          const iconBase64Data = iconResult.iconImage.replace(/^data:image\/\w+;base64,/, '');
+          const iconBinaryData = Uint8Array.from(atob(iconBase64Data), c => c.charCodeAt(0));
+
+          // Determine content type from the data URL
+          const contentTypeMatch = iconResult.iconImage.match(/^data:(image\/\w+);base64,/);
+          const iconContentType = contentTypeMatch ? contentTypeMatch[1] : 'image/png';
+
+          // Save icon to R2
+          await r2.put(iconKey, iconBinaryData, {
+            httpMetadata: { contentType: iconContentType },
+            customMetadata: { item, bin, userHash, type: 'icon' },
+          });
+          savedIconKey = iconKey;
+          console.log(`[Quiz] Saved icon: ${iconKey}`);
+        } else {
+          console.log(`[Quiz] Icon generation failed: ${iconResult.error}`);
+        }
+      } catch (iconErr) {
+        console.error('[Quiz] Icon generation error:', iconErr);
+        // Don't fail the whole save if icon generation fails
+      }
+    }
 
     // Save to quiz_images table (approved = 0 = pending admin review)
     await db.prepare(`
-      INSERT INTO quiz_images (image_key, item, bin, reason, confidence, submitted_by, approved)
-      VALUES (?, ?, ?, ?, ?, ?, 0)
-    `).bind(imageKey, item, bin, reason, confidence, userHash).run();
+      INSERT INTO quiz_images (image_key, icon_key, item, bin, reason, confidence, submitted_by, approved)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+    `).bind(imageKey, savedIconKey, item, bin, reason, confidence, userHash).run();
 
-    console.log(`[Quiz] Saved image: ${imageKey}`);
-    return imageKey;
+    return { imageKey, iconKey: savedIconKey };
   } catch (err) {
     console.error('[Quiz] Failed to save image:', err);
     return null;
@@ -242,9 +277,11 @@ identify.post('/', async (c) => {
     const funFact = await getRandomFunFact(env.DB);
 
     // Save image for quiz if confidence is good (> 0.7) and item was identified
+    // Also generates and saves a cartoon icon version
     let imageKey: string | null = null;
+    let iconKey: string | null = null;
     if (confidence >= 0.7 && item !== 'Óþekkt hlutur') {
-      imageKey = await saveQuizImage(
+      const saveResult = await saveQuizImage(
         env.IMAGES,
         env.DB,
         body.image,
@@ -252,8 +289,13 @@ identify.post('/', async (c) => {
         bin,
         reason,
         confidence,
-        userHash
+        userHash,
+        env.GEMINI_API_KEY // Pass API key for icon generation
       );
+      if (saveResult) {
+        imageKey = saveResult.imageKey;
+        iconKey = saveResult.iconKey;
+      }
     }
 
     // Log scan

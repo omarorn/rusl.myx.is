@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { speakImage, textToSpeech } from '../services/api';
+import { describeImage } from '../services/api';
 
 interface LiveModeProps {
   onClose: () => void;
@@ -9,13 +9,11 @@ export function LiveMode({ onClose }: LiveModeProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isActive, setIsActive] = useState(false);
-  const [isListening, setIsListening] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [currentDescription, setCurrentDescription] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [speechReady, setSpeechReady] = useState(true); // Gemini TTS is always ready
+  const [autoMode, setAutoMode] = useState(false);
   const intervalRef = useRef<number | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Initialize camera
   useEffect(() => {
@@ -45,78 +43,12 @@ export function LiveMode({ onClose }: LiveModeProps) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
-      // Stop any playing audio
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
     };
   }, []);
 
-  // Play base64 audio from Gemini TTS
-  const playAudio = useCallback((audioBase64: string, mimeType: string = 'audio/wav') => {
-    // Stop any currently playing audio
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-
-    try {
-      // Create audio element from base64 data
-      const audio = new Audio(`data:${mimeType};base64,${audioBase64}`);
-      audioRef.current = audio;
-
-      audio.onplay = () => {
-        console.log('[TTS] Started playing');
-        setIsSpeaking(true);
-      };
-
-      audio.onended = () => {
-        console.log('[TTS] Finished playing');
-        setIsSpeaking(false);
-        audioRef.current = null;
-      };
-
-      audio.onerror = (e) => {
-        console.error('[TTS] Audio error:', e);
-        setIsSpeaking(false);
-        audioRef.current = null;
-      };
-
-      audio.play().catch(err => {
-        console.error('[TTS] Play error:', err);
-        setError('Gat ekki spilað hljóð - ýttu á skjáinn til að virkja');
-        setIsSpeaking(false);
-      });
-    } catch (err) {
-      console.error('[TTS] Error creating audio:', err);
-      setIsSpeaking(false);
-    }
-  }, []);
-
-  // Speak text using Gemini TTS API
-  const speak = useCallback(async (text: string) => {
-    try {
-      setIsSpeaking(true);
-      console.log('[TTS] Requesting speech for:', text);
-
-      const response = await textToSpeech(text);
-
-      if (response.success && response.audio) {
-        playAudio(response.audio, response.mimeType || 'audio/wav');
-      } else {
-        console.error('[TTS] Failed:', response.error);
-        setIsSpeaking(false);
-      }
-    } catch (err) {
-      console.error('[TTS] Error:', err);
-      setIsSpeaking(false);
-    }
-  }, [playAudio]);
-
-  // Capture frame, get description and audio from Gemini TTS
+  // Capture and describe
   const captureAndDescribe = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current || isSpeaking) return;
+    if (!videoRef.current || !canvasRef.current || isProcessing) return;
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -132,86 +64,71 @@ export function LiveMode({ onClose }: LiveModeProps) {
     const imageData = canvas.toDataURL('image/jpeg', 0.7);
 
     try {
-      setIsListening(true);
-      // Use combined endpoint: describe + TTS in one call
-      const response = await speakImage(imageData);
-      setIsListening(false);
+      setIsProcessing(true);
+      setIsActive(true);
+
+      const response = await describeImage(imageData);
 
       if (response.success && response.description) {
         setCurrentDescription(response.description);
-
-        // Play audio if available
-        if (response.audio) {
-          playAudio(response.audio, response.mimeType || 'audio/wav');
-        }
       } else if (response.error) {
-        console.error('Speak error:', response.error);
+        console.error('Describe error:', response.error);
+        setError(response.error);
       }
     } catch (err) {
       console.error('Describe error:', err);
-      setIsListening(false);
+      setError('Villa við að greina mynd');
+    } finally {
+      setIsProcessing(false);
     }
-  }, [playAudio, isSpeaking]);
+  }, [isProcessing]);
 
-  // Stop any playing audio
-  const stopAudio = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    setIsSpeaking(false);
-  }, []);
-
-  // Test speech to enable audio on user interaction
-  const testSpeech = () => {
-    speak('Hæ! Ég er tilbúin.');
-  };
-
-  // Toggle live mode
-  const toggleActive = () => {
-    if (isActive) {
-      // Stop
-      setIsActive(false);
+  // Toggle auto mode
+  const toggleAutoMode = useCallback(() => {
+    if (autoMode) {
+      // Stop auto mode
+      setAutoMode(false);
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-      stopAudio();
     } else {
-      // Start - first speak to ensure audio is enabled
-      speak('Byrja að greina');
-      setIsActive(true);
-      // Capture immediately, then every 5 seconds (adjusted for TTS latency)
-      setTimeout(() => captureAndDescribe(), 2000); // Wait for intro speech
-      intervalRef.current = window.setInterval(captureAndDescribe, 5000);
+      // Start auto mode
+      setAutoMode(true);
+      captureAndDescribe();
+      intervalRef.current = window.setInterval(captureAndDescribe, 4000);
     }
-  };
+  }, [autoMode, captureAndDescribe]);
 
-  // Manual capture (one-shot)
-  const manualCapture = () => {
-    if (!isActive) {
+  // Handle screen tap - single capture
+  const handleScreenTap = () => {
+    if (!autoMode && !isProcessing) {
       captureAndDescribe();
     }
   };
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-blue-900 to-black">
+    <div className="h-full flex flex-col bg-black">
       {/* Header */}
-      <header className="safe-top bg-blue-600 text-white p-4 flex items-center justify-between shadow-lg">
-        <button onClick={onClose} className="text-2xl">←</button>
-        <h1 className="text-xl font-bold">🔊 Talandi lýsing</h1>
-        <div className="w-8" />
+      <header className="safe-top bg-gray-900/90 text-white p-3 flex items-center justify-between">
+        <button onClick={onClose} className="p-2 text-xl">←</button>
+        <h1 className="text-lg font-semibold">Lýsing á mynd</h1>
+        <div className="w-10" />
       </header>
 
       {/* Error display */}
       {error && (
-        <div className="bg-red-500 text-white p-4 text-center">
+        <div className="bg-red-600 text-white p-3 text-center text-sm">
           {error}
+          <button onClick={() => setError(null)} className="ml-2 underline">Loka</button>
         </div>
       )}
 
-      {/* Video feed */}
-      <div className="flex-1 relative">
+      {/* Video feed - tap to capture */}
+      <div
+        className="flex-1 relative"
+        onClick={handleScreenTap}
+      >
         <video
           ref={videoRef}
           autoPlay
@@ -221,97 +138,75 @@ export function LiveMode({ onClose }: LiveModeProps) {
         />
         <canvas ref={canvasRef} className="hidden" />
 
-        {/* Status overlay */}
-        <div className="absolute top-4 left-4 right-4">
-          <div className={`rounded-xl p-3 ${
-            isActive ? 'bg-green-500/90' : 'bg-gray-800/90'
-          } text-white text-center`}>
-            {isActive ? (
-              <div className="flex items-center justify-center gap-2">
-                <span className={`w-3 h-3 rounded-full ${isListening ? 'bg-yellow-400 animate-pulse' : isSpeaking ? 'bg-blue-400 animate-pulse' : 'bg-green-300'}`} />
-                <span>
-                  {isListening ? 'Greini mynd...' : isSpeaking ? 'Tala...' : 'Virkt - hlusta...'}
-                </span>
-              </div>
-            ) : (
-              <span>Ýttu á hnapp til að byrja</span>
-            )}
-          </div>
-          {/* Voice status indicator - Gemini TTS */}
-          {!isActive && (
-            <div className="mt-2 bg-blue-500/80 rounded-xl p-2 text-white text-center text-xs">
-              🔊 Gemini TTS (is-IS)
+        {/* Status indicator */}
+        <div className="absolute top-3 left-3 right-3">
+          {isProcessing ? (
+            <div className="bg-yellow-500 text-black rounded-lg px-4 py-2 text-center font-medium">
+              <span className="animate-pulse">Greini mynd...</span>
+            </div>
+          ) : autoMode ? (
+            <div className="bg-green-600 text-white rounded-lg px-4 py-2 text-center">
+              <span className="inline-block w-2 h-2 bg-white rounded-full animate-pulse mr-2"></span>
+              Sjálfvirkt virkt
+            </div>
+          ) : (
+            <div className="bg-gray-800/80 text-white rounded-lg px-4 py-2 text-center">
+              Ýttu á skjáinn til að greina
             </div>
           )}
         </div>
 
-        {/* Current description */}
+        {/* Description overlay */}
         {currentDescription && (
-          <div className="absolute bottom-4 left-4 right-4">
-            <div className="bg-black/80 rounded-xl p-4 text-white">
-              <div className="text-sm text-blue-300 mb-1">Síðasta lýsing:</div>
-              <div className="text-lg">{currentDescription}</div>
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/80 to-transparent p-4 pt-12">
+            <div className="text-white">
+              <p className="text-lg leading-relaxed">{currentDescription}</p>
             </div>
           </div>
         )}
 
-        {/* Speaking indicator */}
-        {isSpeaking && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-8xl animate-pulse">🔊</div>
+        {/* Processing indicator */}
+        {isProcessing && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+            <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
           </div>
         )}
       </div>
 
-      {/* Controls */}
-      <div className="safe-bottom bg-gray-900 p-6">
-        <div className="flex gap-4 justify-center">
-          {/* Test audio button */}
+      {/* Bottom controls */}
+      <div className="safe-bottom bg-gray-900 p-4">
+        <div className="flex items-center justify-around">
+          {/* Single capture */}
           <button
-            onClick={testSpeech}
-            disabled={isActive || !speechReady}
-            className="w-16 h-16 rounded-full bg-purple-500 text-white text-2xl flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50"
-            title="Prófa hljóð"
+            onClick={captureAndDescribe}
+            disabled={isProcessing}
+            className="flex flex-col items-center gap-1 p-3 rounded-xl bg-blue-600 text-white disabled:opacity-50 active:scale-95 transition-transform"
           >
-            🔊
+            <span className="text-2xl">📷</span>
+            <span className="text-xs">Greina</span>
           </button>
 
-          {/* Manual capture button */}
+          {/* Auto mode toggle */}
           <button
-            onClick={manualCapture}
-            disabled={isActive || isListening}
-            className="w-16 h-16 rounded-full bg-blue-500 text-white text-2xl flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50"
-          >
-            📷
-          </button>
-
-          {/* Toggle live mode button */}
-          <button
-            onClick={toggleActive}
-            className={`w-20 h-20 rounded-full text-white text-3xl flex items-center justify-center active:scale-95 transition-all ${
-              isActive
-                ? 'bg-red-500 animate-pulse'
-                : 'bg-green-500'
+            onClick={toggleAutoMode}
+            className={`flex flex-col items-center gap-1 p-3 rounded-xl text-white active:scale-95 transition-all ${
+              autoMode ? 'bg-red-600' : 'bg-green-600'
             }`}
           >
-            {isActive ? '⏹️' : '▶️'}
+            <span className="text-2xl">{autoMode ? '⏹' : '▶️'}</span>
+            <span className="text-xs">{autoMode ? 'Stoppa' : 'Sjálfvirkt'}</span>
           </button>
 
-          {/* Stop speaking button */}
+          {/* Clear description */}
           <button
-            onClick={stopAudio}
-            disabled={!isSpeaking}
-            className="w-16 h-16 rounded-full bg-orange-500 text-white text-2xl flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50"
+            onClick={() => setCurrentDescription(null)}
+            disabled={!currentDescription}
+            className="flex flex-col items-center gap-1 p-3 rounded-xl bg-gray-700 text-white disabled:opacity-50 active:scale-95 transition-transform"
           >
-            🔇
+            <span className="text-2xl">🗑️</span>
+            <span className="text-xs">Hreinsa</span>
           </button>
         </div>
-
-        <p className="text-center text-gray-400 text-sm mt-4">
-          {isActive
-            ? 'Lýsing á 5 sekúndna fresti • Ýttu á rauða hnappinn til að stoppa'
-            : '🔊 Prófa hljóð • 📷 Stök lýsing • ▶️ Sjálfvirk lýsing'}
-        </p>
       </div>
     </div>
   );

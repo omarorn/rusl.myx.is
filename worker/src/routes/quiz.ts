@@ -7,6 +7,7 @@ const quiz = new Hono<{ Bindings: Env }>();
 interface QuizImage {
   id: string;
   image_key: string;
+  icon_key: string | null;
   item: string;
   bin: string;
   reason: string;
@@ -63,7 +64,7 @@ quiz.get('/random', async (c) => {
     const randomOffset = Math.floor(Math.random() * totalImages);
 
     const image = await env.DB.prepare(`
-      SELECT id, image_key, item, bin, reason, times_shown, times_correct
+      SELECT id, image_key, icon_key, item, bin, reason, times_shown, times_correct
       FROM quiz_images
       WHERE approved = 1
       LIMIT 1 OFFSET ?
@@ -78,13 +79,16 @@ quiz.get('/random', async (c) => {
       'UPDATE quiz_images SET times_shown = times_shown + 1 WHERE id = ?'
     ).bind(image.id).run();
 
-    // Generate image URL through our API
+    // Generate image URLs through our API (prefer icon if available)
     const imageUrl = `/api/quiz/image/${image.image_key}`;
+    const iconUrl = image.icon_key ? `/api/quiz/image/${image.icon_key}` : null;
 
     return c.json({
       id: image.id,
       imageUrl,
+      iconUrl, // Cartoon icon version (if available)
       imageKey: image.image_key,
+      iconKey: image.icon_key,
       item: image.item, // Show item name in question
       options: Object.entries(BIN_INFO).map(([key, info]) => ({
         bin: key,

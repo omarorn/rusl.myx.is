@@ -239,40 +239,29 @@ export interface IconResult {
   error?: string;
 }
 
-// Prompt for generating cartoon icons
-const ICON_PROMPT = `Transform this image into a cute, simple cartoon icon suitable for a mobile app.
-
-STYLE REQUIREMENTS:
-- Cropped tightly around the main object (no background or minimal solid color background)
-- Cartoon/vector art style with bold outlines
-- Bright, cheerful colors
-- Simple and recognizable at small sizes (64x64 to 256x256)
-- Cute and friendly appearance (big eyes if applicable, rounded shapes)
-- Clean edges suitable for use as an app icon
-- No text or labels
-- Transparent or solid color background (preferably transparent)
-
-OUTPUT:
-Generate a single cartoon icon image of the main object in the photo.`;
+// Prompt template for generating cartoon icons (matching ruslgreinir-google pattern)
+const getIconPrompt = (objectName: string) => `Create a high-quality, cute 2D vector icon of a ${objectName}.
+Use the provided image as a visual reference for the object's shape and color, but isolate it completely.
+White background. Thick bold outlines. Flat design. Sticker style.`;
 
 /**
  * Generate a cartoon icon from an image using Gemini 2.5 Flash Image
  * @param imageBase64 - Base64 encoded image (with or without data URL prefix)
  * @param apiKey - Gemini API key
- * @param itemName - Optional item name for context (e.g., "Gosdós", "Pappakassi")
+ * @param itemName - Item name for the icon (e.g., "Gosdós", "Pappakassi") - REQUIRED for good results
  * @returns IconResult with base64 icon image or error
  */
 export async function generateIcon(
   imageBase64: string,
   apiKey: string,
-  itemName?: string
+  itemName: string = 'recycling item'
 ): Promise<IconResult> {
   try {
     // Remove data URL prefix if present
     const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
     const imageSizeKB = Math.round(imageData.length / 1024);
 
-    console.log('[Gemini Icon] Generating icon, image size:', imageSizeKB, 'KB');
+    console.log('[Gemini Icon] Generating icon for:', itemName, '- image size:', imageSizeKB, 'KB');
 
     if (imageSizeKB < 1) {
       console.error('[Gemini Icon] Image too small:', imageSizeKB, 'KB');
@@ -284,11 +273,8 @@ export async function generateIcon(
       return { success: false, error: 'No API key' };
     }
 
-    // Build prompt with optional item context
-    let prompt = ICON_PROMPT;
-    if (itemName) {
-      prompt += `\n\nThe object is: ${itemName}`;
-    }
+    // Use the ruslgreinir-google style prompt
+    const prompt = getIconPrompt(itemName);
 
     const requestBody = {
       contents: [{

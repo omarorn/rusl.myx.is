@@ -42,6 +42,7 @@ interface ScannerProps {
 export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, onOpenTrip }: ScannerProps) {
   const { videoRef, canvasRef, isStreaming, error, startCamera, captureImage } = useCamera();
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0); // Track queued images
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [currentResult, setCurrentResult] = useState<IdentifyResponse | null>(null);
@@ -121,9 +122,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
   };
 
   const handleCapture = async () => {
-    // Prevent double-clicks while loading
-    if (isLoading) return;
-
+    // Allow rapid-fire: capture image immediately without waiting
     const image = captureImage();
     if (!image) {
       addLog('Gat ekki tekið mynd - reyndu aftur', '❌', 'error');
@@ -136,32 +135,41 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
       return;
     }
 
-    setCurrentImage(image);
-    setOverlayImage(null);
-    setCartoonImage(null);
-    setCurrentResult(null);
-    setSelectedObjectIndex(0);
+    // Only update current image if nothing is being processed
+    if (pendingCount === 0) {
+      setCurrentImage(image);
+      setOverlayImage(null);
+      setCartoonImage(null);
+      setCurrentResult(null);
+      setSelectedObjectIndex(0);
+    }
+
+    // Track pending request
+    setPendingCount(prev => prev + 1);
     setIsLoading(true);
 
-    addLog('Mynd tekin', '📸', 'info');
-    addLog('Sendi til þjóns...', '📤', 'pending');
+    const captureNum = pendingCount + 1;
+    addLog(`Mynd #${captureNum} tekin`, '📸', 'info');
+    addLog(`Sendi #${captureNum} til þjóns...`, '📤', 'pending');
 
     try {
-      addLog('Greini með gervigreind...', '🤖', 'pending');
+      addLog(`Greini #${captureNum} með gervigreind...`, '🤖', 'pending');
       const response = await identifyItem(image);
 
       if (response.success) {
         // Check if it's actually a failed identification (0% confidence)
         if (response.confidence === 0 || response.item === 'Óþekkt hlutur') {
-          addLog('Gat ekki greint hlut', '🤔', 'error');
-          addLog('Prófaðu að taka skýrari mynd', '📷', 'info');
+          addLog(`#${captureNum}: Gat ekki greint hlut`, '🤔', 'error');
+          // Update current display if this is the most recent
+          setCurrentImage(image);
           setCurrentResult(response);
-          setIsLoading(false);
           return;
         }
 
-        addLog(`Flokkað: ${response.item} → ${response.binInfo?.name_is}`, response.binInfo?.icon || '✅', 'success');
+        addLog(`#${captureNum}: ${response.item} → ${response.binInfo?.name_is}`, response.binInfo?.icon || '✅', 'success');
 
+        // Always update current result to show latest
+        setCurrentImage(image);
         setCurrentResult(response);
 
         // Add to history
@@ -188,8 +196,8 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
             });
         }
 
-        // Generate AI cartoon in background
-        if (showCartoon) {
+        // Generate AI cartoon in background (only for last image in batch)
+        if (showCartoon && pendingCount <= 1) {
           setIsGeneratingCartoon(true);
           addLog('Bý til teiknimynd...', '🎨', 'pending');
           generateCartoon(image, 'cute')
@@ -212,21 +220,25 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
         // Better error messages based on error type
         const errorMsg = response.error || 'Villa kom upp';
         if (errorMsg.includes('ekki tiltæk') || errorMsg.includes('quota') || errorMsg.includes('429')) {
-          addLog('AI þjónusta ekki tiltæk', '⚠️', 'error');
-          addLog('Reyndu aftur eftir smá stund', '⏳', 'info');
+          addLog(`#${captureNum}: AI þjónusta ekki tiltæk`, '⚠️', 'error');
         } else if (response.item === 'Óþekkt hlutur') {
-          addLog('Gat ekki greint hlut', '🤔', 'error');
-          addLog('Prófaðu að taka skýrari mynd', '📷', 'info');
+          addLog(`#${captureNum}: Gat ekki greint hlut`, '🤔', 'error');
         } else {
-          addLog(errorMsg, '❌', 'error');
+          addLog(`#${captureNum}: ${errorMsg}`, '❌', 'error');
         }
       }
     } catch (err) {
       console.error('Scan error:', err);
-      addLog('Nettenging mistókst', '📡', 'error');
-      addLog('Athugaðu nettengingu og reyndu aftur', '🔄', 'info');
+      addLog(`#${captureNum}: Nettenging mistókst`, '📡', 'error');
     } finally {
-      setIsLoading(false);
+      // Decrement pending count
+      setPendingCount(prev => {
+        const newCount = prev - 1;
+        if (newCount === 0) {
+          setIsLoading(false);
+        }
+        return newCount;
+      });
     }
   };
 
@@ -280,19 +292,25 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-48 h-48 border-2 border-white/40 rounded-2xl" />
               </div>
-              {/* Capture button */}
+              {/* Capture button - allows rapid-fire */}
               <button
                 onClick={handleCapture}
-                disabled={!isStreaming || isLoading}
+                disabled={!isStreaming}
                 className="absolute bottom-3 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full bg-white border-4 border-green-500
                          flex items-center justify-center shadow-lg disabled:opacity-50 active:scale-95 transition-transform"
               >
-                {isLoading ? (
-                  <div className="w-6 h-6 border-3 border-green-500 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-green-500" />
-                )}
+                <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                  {pendingCount > 0 && (
+                    <span className="text-white text-xs font-bold">{pendingCount}</span>
+                  )}
+                </div>
               </button>
+              {/* Pending indicator */}
+              {pendingCount > 0 && (
+                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-3 py-1 rounded-full text-sm font-medium animate-pulse">
+                  ⏳ {pendingCount} í vinnslu
+                </div>
+              )}
             </>
           )}
         </div>
