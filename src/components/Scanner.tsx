@@ -151,6 +151,15 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
       const response = await identifyItem(image);
 
       if (response.success) {
+        // Check if it's actually a failed identification (0% confidence)
+        if (response.confidence === 0 || response.item === 'Óþekkt hlutur') {
+          addLog('Gat ekki greint hlut', '🤔', 'error');
+          addLog('Prófaðu að taka skýrari mynd', '📷', 'info');
+          setCurrentResult(response);
+          setIsLoading(false);
+          return;
+        }
+
         addLog(`Flokkað: ${response.item} → ${response.binInfo?.name_is}`, response.binInfo?.icon || '✅', 'success');
 
         setCurrentResult(response);
@@ -200,11 +209,22 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
             });
         }
       } else {
-        addLog(response.error || 'Villa kom upp', '❌', 'error');
+        // Better error messages based on error type
+        const errorMsg = response.error || 'Villa kom upp';
+        if (errorMsg.includes('ekki tiltæk') || errorMsg.includes('quota') || errorMsg.includes('429')) {
+          addLog('AI þjónusta ekki tiltæk', '⚠️', 'error');
+          addLog('Reyndu aftur eftir smá stund', '⏳', 'info');
+        } else if (response.item === 'Óþekkt hlutur') {
+          addLog('Gat ekki greint hlut', '🤔', 'error');
+          addLog('Prófaðu að taka skýrari mynd', '📷', 'info');
+        } else {
+          addLog(errorMsg, '❌', 'error');
+        }
       }
     } catch (err) {
       console.error('Scan error:', err);
-      addLog('Nettenging mistókst - reyndu aftur', '❌', 'error');
+      addLog('Nettenging mistókst', '📡', 'error');
+      addLog('Athugaðu nettengingu og reyndu aftur', '🔄', 'info');
     } finally {
       setIsLoading(false);
     }
@@ -218,6 +238,11 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
 
   return (
     <div className="h-full flex flex-col bg-gray-900">
+      {/* Development Banner */}
+      <div className="bg-yellow-500 text-yellow-900 text-center text-xs py-1 font-medium">
+        🚧 Þetta app er í þróun — villur geta komið upp
+      </div>
+
       {/* Header */}
       <header className="safe-top bg-green-600 text-white p-3 flex items-center justify-between shadow-lg">
         <h1 className="text-lg font-bold">♻️ Ruslaflokkun</h1>
@@ -276,7 +301,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
         {currentResult && (
           <div
             className="p-4 text-white"
-            style={{ backgroundColor: currentResult.binInfo?.color || '#6b7280' }}
+            style={{ backgroundColor: currentResult.confidence === 0 ? '#dc2626' : (currentResult.binInfo?.color || '#6b7280') }}
           >
             {/* Image with cartoon effect and nano banana */}
             <div className="flex items-start gap-4 mb-3">

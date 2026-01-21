@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { generateCartoonImage, cropImage } from '../services/image-gen';
+import { generateIcon } from '../services/gemini';
 
 const image = new Hono<{ Bindings: Env }>();
 
@@ -73,6 +74,49 @@ image.post('/crop', async (c) => {
   } catch (err) {
     console.error('Crop error:', err);
     return c.json({ error: 'Villa við að klippa mynd' }, 500);
+  }
+});
+
+// POST /api/image/icon - Generate a cartoon icon from an image
+image.post('/icon', async (c) => {
+  const env = c.env;
+
+  try {
+    const { image: imageBase64, itemName } = await c.req.json<{
+      image: string;
+      itemName?: string;
+    }>();
+
+    if (!imageBase64) {
+      return c.json({ error: 'Mynd vantar' }, 400);
+    }
+
+    if (!env.GEMINI_API_KEY) {
+      return c.json({
+        success: false,
+        error: 'API lykill vantar',
+      }, 500);
+    }
+
+    const result = await generateIcon(imageBase64, env.GEMINI_API_KEY, itemName);
+
+    if (!result.success) {
+      return c.json({
+        success: false,
+        error: result.error || 'Gat ekki búið til ikon',
+      });
+    }
+
+    return c.json({
+      success: true,
+      iconImage: result.iconImage,
+    });
+  } catch (err) {
+    console.error('Icon generation error:', err);
+    return c.json({
+      success: false,
+      error: 'Villa við að búa til ikon',
+    }, 500);
   }
 });
 

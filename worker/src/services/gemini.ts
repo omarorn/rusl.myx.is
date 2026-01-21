@@ -3,6 +3,9 @@ import type { GeminiResponse, BinType, DetectedObject } from '../types';
 // Using Gemini 2.0 Flash Exp (more reliable quota)
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
 
+// Gemini 2.5 Flash Image for icon generation
+const GEMINI_IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent';
+
 const SYSTEM_PROMPT = `Þú ert sérfræðingur í ruslaflokkun á Íslandi (SORPA svæðið).
 Þú hefur dökkann húmor og elskar pabba-brandara.
 
@@ -226,5 +229,149 @@ export async function classifyWithGemini(
   } catch (error) {
     console.error('[Gemini] Classification error:', error);
     return null;
+  }
+}
+
+// Icon generation result type
+export interface IconResult {
+  success: boolean;
+  iconImage?: string; // base64 encoded image
+  error?: string;
+}
+
+// Prompt for generating cartoon icons
+const ICON_PROMPT = `Transform this image into a cute, simple cartoon icon suitable for a mobile app.
+
+STYLE REQUIREMENTS:
+- Cropped tightly around the main object (no background or minimal solid color background)
+- Cartoon/vector art style with bold outlines
+- Bright, cheerful colors
+- Simple and recognizable at small sizes (64x64 to 256x256)
+- Cute and friendly appearance (big eyes if applicable, rounded shapes)
+- Clean edges suitable for use as an app icon
+- No text or labels
+- Transparent or solid color background (preferably transparent)
+
+OUTPUT:
+Generate a single cartoon icon image of the main object in the photo.`;
+
+/**
+ * Generate a cartoon icon from an image using Gemini 2.5 Flash Image
+ * @param imageBase64 - Base64 encoded image (with or without data URL prefix)
+ * @param apiKey - Gemini API key
+ * @param itemName - Optional item name for context (e.g., "Gosdós", "Pappakassi")
+ * @returns IconResult with base64 icon image or error
+ */
+export async function generateIcon(
+  imageBase64: string,
+  apiKey: string,
+  itemName?: string
+): Promise<IconResult> {
+  try {
+    // Remove data URL prefix if present
+    const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const imageSizeKB = Math.round(imageData.length / 1024);
+
+    console.log('[Gemini Icon] Generating icon, image size:', imageSizeKB, 'KB');
+
+    if (imageSizeKB < 1) {
+      console.error('[Gemini Icon] Image too small:', imageSizeKB, 'KB');
+      return { success: false, error: 'Image too small' };
+    }
+
+    if (!apiKey) {
+      console.error('[Gemini Icon] No API key provided');
+      return { success: false, error: 'No API key' };
+    }
+
+    // Build prompt with optional item context
+    let prompt = ICON_PROMPT;
+    if (itemName) {
+      prompt += `\n\nThe object is: ${itemName}`;
+    }
+
+    const requestBody = {
+      contents: [{
+        parts: [
+          {
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: imageData,
+            },
+          },
+          {
+            text: prompt,
+          },
+        ],
+      }],
+      generationConfig: {
+        responseModalities: ['IMAGE', 'TEXT'],
+        temperature: 0.4,
+      },
+    };
+
+    console.log('[Gemini Icon] Calling API...');
+
+    const response = await fetch(`${GEMINI_IMAGE_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Gemini Icon] API error:', response.status, errorText.substring(0, 300));
+
+      if (response.status === 429) {
+        return { success: false, error: 'Rate limit exceeded' };
+      } else if (response.status === 404) {
+        return { success: false, error: 'Image model not available' };
+      } else if (response.status === 401 || response.status === 403) {
+        return { success: false, error: 'Authentication error' };
+      }
+
+      return { success: false, error: `API error: ${response.status}` };
+    }
+
+    const data = await response.json() as {
+      candidates?: Array<{
+        content?: {
+          parts?: Array<{
+            text?: string;
+            inlineData?: {
+              mimeType: string;
+              data: string;
+            };
+          }>;
+        };
+      }>;
+    };
+
+    console.log('[Gemini Icon] Response received');
+
+    // Find image in response parts
+    const parts = data?.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+      if (part.inlineData?.data) {
+        const mimeType = part.inlineData.mimeType || 'image/png';
+        const iconBase64 = `data:${mimeType};base64,${part.inlineData.data}`;
+        console.log('[Gemini Icon] Icon generated successfully');
+        return { success: true, iconImage: iconBase64 };
+      }
+    }
+
+    // No image found in response
+    console.error('[Gemini Icon] No image in response');
+    const textResponse = parts.find(p => p.text)?.text;
+    if (textResponse) {
+      console.log('[Gemini Icon] Text response:', textResponse.substring(0, 200));
+    }
+
+    return { success: false, error: 'No image generated' };
+  } catch (error) {
+    console.error('[Gemini Icon] Generation error:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }

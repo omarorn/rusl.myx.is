@@ -56,6 +56,7 @@ app.get('/api', (c) => {
       'GET /api/admin/stats',
       'POST /api/image/cartoon',
       'POST /api/image/crop',
+      'POST /api/image/icon',
       'GET /api/stations',
       'GET /api/stations/:id',
       'POST /api/trips',
