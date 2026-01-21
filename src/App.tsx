@@ -101,7 +101,7 @@ export default function App() {
       {view === 'stats' && <Stats onClose={() => navigateTo('scanner')} />}
       {view === 'quiz' && <Quiz onClose={() => navigateTo('scanner')} />}
       {view === 'live' && <LiveMode onClose={() => navigateTo('scanner')} />}
-      {view === 'settings' && <Settings onClose={() => navigateTo('scanner')} />}
+      {view === 'settings' && <Settings onClose={() => navigateTo('scanner')} onOpenAdmin={() => navigateTo('admin')} />}
       {view === 'admin' && <Admin onClose={() => navigateTo('scanner')} />}
       {view === 'trip' && (
         <TripScreen

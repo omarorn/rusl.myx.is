@@ -3,9 +3,10 @@ import { t } from '../locales/translations';
 
 interface SettingsProps {
   onClose: () => void;
+  onOpenAdmin?: () => void;
 }
 
-export function Settings({ onClose }: SettingsProps) {
+export function Settings({ onClose, onOpenAdmin }: SettingsProps) {
   const { language, region, setLanguage, setRegion } = useSettings();
 
   const regions: { id: Region; name: string }[] = [
@@ -20,7 +21,13 @@ export function Settings({ onClose }: SettingsProps) {
       <header className="safe-top bg-gray-700 text-white p-4 flex items-center justify-between shadow-lg">
         <button onClick={onClose} className="text-2xl">←</button>
         <h1 className="text-xl font-bold">⚙️ {t('settings.title', language)}</h1>
-        <div className="w-8" />
+        {onOpenAdmin ? (
+          <button onClick={onOpenAdmin} className="text-xl p-1 opacity-30 hover:opacity-100 transition-opacity">
+            🔧
+          </button>
+        ) : (
+          <div className="w-8" />
+        )}
       </header>
 
       {/* Content */}

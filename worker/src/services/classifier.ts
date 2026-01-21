@@ -64,6 +64,21 @@ export async function classifyItem(
   console.log('[Classifier] Gemini result:', geminiResult ? `${geminiResult.item} (${geminiResult.confidence})` : 'null');
 
   if (geminiResult) {
+    // Special handling for cats - not waste! 🐱
+    const lowerItem = geminiResult.item?.toLowerCase() || '';
+    if (lowerItem.includes('kött') || lowerItem.includes('cat') || lowerItem.includes('kisa') ||
+        lowerItem.includes('kitten') || lowerItem.includes('kettling')) {
+      return {
+        item: geminiResult.item,
+        bin: 'mixed' as BinType, // Not actually for disposal!
+        binInfo: { name_is: '🐱 Ekki rusl!', color: '#ec4899', icon: '😻' },
+        reason: `Þetta er köttur! Kettir eru ekki rusl - þeir eru yndislegir félagar. Ef þú finnur villiköttinn, hafðu samband við Kattholt (kattholt.is) eða næsta dýrahjálp. 🐈💕`,
+        confidence: geminiResult.confidence,
+        source: 'gemini',
+        dadJoke: 'Af hverju sitja kettir aldrei við tölvuna? Þeir eru hræddir við músina! 🐭',
+      };
+    }
+
     const override = checkOverrides(geminiResult.item);
     const bin: BinType = override || (geminiResult.bin as BinType);
 

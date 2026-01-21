@@ -45,24 +45,39 @@ describe.post('/', async (c) => {
     const base64Match = image.match(/^data:image\/\w+;base64,(.+)$/);
     const imageData = base64Match ? base64Match[1] : image;
     const mimeType = image.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
-    const dataUrl = `data:${mimeType};base64,${imageData}`;
 
-    // Use Cloudflare AI for description
-    const response = await env.AI.run('@cf/meta/llama-3.2-11b-vision-instruct', {
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: DESCRIBE_PROMPT },
-            { type: 'image_url', image_url: { url: dataUrl } },
-          ],
-        },
-      ],
-      max_tokens: 100,
-      temperature: 0.3,
-    });
+    // Use Gemini for description (more reliable than Cloudflare AI)
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: DESCRIBE_PROMPT },
+              { inline_data: { mime_type: mimeType, data: imageData } },
+            ],
+          }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 150,
+          },
+        }),
+      }
+    );
 
-    const description = (response as any)?.response || 'Gat ekki lýst myndinni.';
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text();
+      console.error('Gemini describe error:', geminiResponse.status, errorText.substring(0, 200));
+      return c.json({ error: 'Villa við að lýsa mynd' }, 500);
+    }
+
+    const data = await geminiResponse.json() as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+
+    const description = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Gat ekki lýst myndinni.';
 
     return c.json({
       success: true,

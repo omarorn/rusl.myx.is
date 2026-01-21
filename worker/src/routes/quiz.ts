@@ -45,9 +45,10 @@ quiz.get('/image/*', async (c) => {
   }
 });
 
-// GET /api/quiz/random - Get a random quiz image
+// GET /api/quiz/random - Get next quiz image (newest first, ordered by least shown)
 quiz.get('/random', async (c) => {
   const env = c.env;
+  const questionIndex = parseInt(c.req.query('index') || '0', 10);
 
   try {
     // Get total count of approved images
@@ -60,15 +61,16 @@ quiz.get('/random', async (c) => {
       return c.json({ error: 'Engar myndir í gagnagrunni' }, 404);
     }
 
-    // Use truly random selection with OFFSET
-    const randomOffset = Math.floor(Math.random() * totalImages);
+    // Use index to get images in order: newest first, then by least shown
+    const offset = questionIndex % totalImages; // Wrap around if index exceeds total
 
     const image = await env.DB.prepare(`
       SELECT id, image_key, icon_key, item, bin, reason, times_shown, times_correct
       FROM quiz_images
       WHERE approved = 1
+      ORDER BY times_shown ASC, created_at DESC
       LIMIT 1 OFFSET ?
-    `).bind(randomOffset).first<QuizImage>();
+    `).bind(offset).first<QuizImage>();
 
     if (!image) {
       return c.json({ error: 'Engar myndir í gagnagrunni' }, 404);

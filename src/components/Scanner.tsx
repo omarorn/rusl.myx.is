@@ -55,6 +55,15 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
   const [selectedObjectIndex, setSelectedObjectIndex] = useState(0);
   const logEndRef = useRef<HTMLDivElement>(null);
 
+  // Auto-capture with motion detection
+  const [autoCapture, setAutoCapture] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [motionDetected, setMotionDetected] = useState(false);
+  const lastFrameRef = useRef<ImageData | null>(null);
+  const motionTimeoutRef = useRef<number | null>(null);
+  const countdownIntervalRef = useRef<number | null>(null);
+  const detectionCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
   // Apply cartoon effect to image (fallback CSS filter if AI cartoon not available)
   const getCartoonStyle = useCallback(() => {
     if (!showCartoon || cartoonImage) return {};
@@ -110,6 +119,107 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
+
+  // Motion detection for auto-capture
+  useEffect(() => {
+    if (!autoCapture || !isStreaming || !videoRef.current) return;
+
+    // Create detection canvas if not exists
+    if (!detectionCanvasRef.current) {
+      detectionCanvasRef.current = document.createElement('canvas');
+      detectionCanvasRef.current.width = 64; // Small for fast comparison
+      detectionCanvasRef.current.height = 64;
+    }
+
+    const detectMotion = () => {
+      if (!videoRef.current || !detectionCanvasRef.current) return;
+
+      const ctx = detectionCanvasRef.current.getContext('2d');
+      if (!ctx) return;
+
+      // Draw current frame (small size for fast comparison)
+      ctx.drawImage(videoRef.current, 0, 0, 64, 64);
+      const currentFrame = ctx.getImageData(0, 0, 64, 64);
+
+      if (lastFrameRef.current) {
+        // Compare frames - calculate difference
+        let diff = 0;
+        const threshold = 30; // Pixel difference threshold
+        for (let i = 0; i < currentFrame.data.length; i += 4) {
+          const rDiff = Math.abs(currentFrame.data[i] - lastFrameRef.current.data[i]);
+          const gDiff = Math.abs(currentFrame.data[i + 1] - lastFrameRef.current.data[i + 1]);
+          const bDiff = Math.abs(currentFrame.data[i + 2] - lastFrameRef.current.data[i + 2]);
+          if (rDiff > threshold || gDiff > threshold || bDiff > threshold) {
+            diff++;
+          }
+        }
+
+        // If more than 15% of pixels changed, motion detected
+        const motionThreshold = (64 * 64) * 0.15;
+        const hasMotion = diff > motionThreshold;
+
+        if (hasMotion && !motionDetected && countdown === null && pendingCount === 0) {
+          // Motion detected - start countdown
+          setMotionDetected(true);
+          addLog('Hreyfing greind! Niðurtalning...', '👀', 'info');
+
+          // Clear any existing timeout
+          if (motionTimeoutRef.current) {
+            clearTimeout(motionTimeoutRef.current);
+          }
+
+          // Start 3-second countdown
+          setCountdown(3);
+        } else if (!hasMotion && motionDetected) {
+          // Motion stopped - reset after a delay
+          if (motionTimeoutRef.current) {
+            clearTimeout(motionTimeoutRef.current);
+          }
+          motionTimeoutRef.current = window.setTimeout(() => {
+            if (countdown === null) {
+              setMotionDetected(false);
+            }
+          }, 1000);
+        }
+      }
+
+      lastFrameRef.current = currentFrame;
+    };
+
+    // Check for motion every 200ms
+    const intervalId = window.setInterval(detectMotion, 200);
+
+    return () => {
+      clearInterval(intervalId);
+      if (motionTimeoutRef.current) {
+        clearTimeout(motionTimeoutRef.current);
+      }
+    };
+  }, [autoCapture, isStreaming, motionDetected, countdown, pendingCount, videoRef]);
+
+  // Countdown timer
+  const [triggerCapture, setTriggerCapture] = useState(false);
+
+  useEffect(() => {
+    if (countdown === null) return;
+
+    if (countdown > 0) {
+      countdownIntervalRef.current = window.setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+    } else {
+      // Countdown finished - trigger capture!
+      setCountdown(null);
+      setMotionDetected(false);
+      setTriggerCapture(true);
+    }
+
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearTimeout(countdownIntervalRef.current);
+      }
+    };
+  }, [countdown]);
 
   const addLog = (text: string, icon: string, type: LogEntry['type']) => {
     setLogs(prev => [...prev, {
@@ -242,6 +352,14 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
     }
   };
 
+  // Effect to trigger capture from countdown
+  useEffect(() => {
+    if (triggerCapture) {
+      setTriggerCapture(false);
+      handleCapture();
+    }
+  }, [triggerCapture]);
+
   const clearHistory = () => {
     setHistory([]);
     localStorage.removeItem('scan_history');
@@ -290,8 +408,40 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
               />
               {/* Scan frame */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-48 h-48 border-2 border-white/40 rounded-2xl" />
+                <div className={`w-48 h-48 border-2 rounded-2xl transition-colors ${
+                  countdown !== null ? 'border-green-400 animate-pulse' :
+                  motionDetected ? 'border-yellow-400' :
+                  'border-white/40'
+                }`} />
               </div>
+              {/* Countdown display */}
+              {countdown !== null && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-24 h-24 bg-green-500/80 rounded-full flex items-center justify-center animate-pulse">
+                    <span className="text-white text-5xl font-bold">{countdown || '📸'}</span>
+                  </div>
+                </div>
+              )}
+              {/* Motion indicator */}
+              {autoCapture && motionDetected && countdown === null && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-3 py-1 rounded-full text-sm font-medium">
+                  👀 Hreyfing greind...
+                </div>
+              )}
+              {/* Auto-capture toggle */}
+              <button
+                onClick={() => {
+                  setAutoCapture(!autoCapture);
+                  setCountdown(null);
+                  setMotionDetected(false);
+                  addLog(autoCapture ? 'Sjálfvirk myndataka slökkt' : 'Sjálfvirk myndataka kveikt', autoCapture ? '🔴' : '🟢', 'info');
+                }}
+                className={`absolute top-3 right-3 px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                  autoCapture ? 'bg-green-500 text-white' : 'bg-gray-800/70 text-white'
+                }`}
+              >
+                {autoCapture ? '🤖 Auto' : '👆 Handvirkt'}
+              </button>
               {/* Capture button - allows rapid-fire */}
               <button
                 onClick={handleCapture}
