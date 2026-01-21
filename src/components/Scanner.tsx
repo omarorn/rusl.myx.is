@@ -113,11 +113,36 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
     }
   }, [history]);
 
-  // Start camera
-  useEffect(() => {
-    startCamera();
-    addLog('Myndavél tilbúin', '📷', 'info');
-  }, [startCamera]);
+  // Camera is NOT auto-started - user must tap to enable
+  // This saves battery and gives user control
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const toggleCamera = useCallback(() => {
+    if (isStreaming) {
+      stopCamera();
+      addLog('Myndavél slökkt', '📷', 'info');
+    } else {
+      startCamera();
+      addLog('Myndavél kveikt', '📷', 'info');
+    }
+  }, [isStreaming, startCamera, stopCamera]);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const imageBase64 = event.target?.result as string;
+      if (imageBase64) {
+        // Process the selected image
+        handleCapture(imageBase64);
+      }
+    };
+    reader.readAsDataURL(file);
+    // Reset input so same file can be selected again
+    e.target.value = '';
+  };
 
   // Auto-scroll log
   useEffect(() => {
@@ -235,16 +260,17 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
     }]);
   };
 
-  const handleCapture = async () => {
+  const handleCapture = async (providedImage?: string) => {
     // Allow rapid-fire: capture image immediately without waiting
-    const image = captureImage();
+    // If providedImage is given (from file picker), use that instead of capturing
+    const image = providedImage || captureImage();
     if (!image) {
       addLog('Gat ekki tekið mynd - reyndu aftur', '❌', 'error');
       return;
     }
 
-    // Check if image is too small (likely black/empty)
-    if (image.length < 5000) {
+    // Check if image is too small (likely black/empty) - only for camera captures
+    if (!providedImage && image.length < 5000) {
       addLog('Mynd of lítil - bíddu eftir myndavél', '⚠️', 'error');
       return;
     }
