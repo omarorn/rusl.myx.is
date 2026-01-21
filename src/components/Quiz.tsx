@@ -50,7 +50,7 @@ export function Quiz({ onClose }: QuizProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const q = await getQuizQuestion();
+      const q = await getQuizQuestion(totalQuestions);
       if ('error' in q) {
         setError((q as any).error);
         return;
@@ -63,7 +63,7 @@ export function Quiz({ onClose }: QuizProps) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [totalQuestions]);
 
   // Start game
   const startGame = useCallback((selectedMode: GameMode) => {

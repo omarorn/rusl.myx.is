@@ -126,8 +126,11 @@ export interface QuizScore {
   created_at: number;
 }
 
-export async function getQuizQuestion(): Promise<QuizQuestion> {
-  const response = await fetch(`${API_BASE}/api/quiz/random`);
+export async function getQuizQuestion(index?: number): Promise<QuizQuestion> {
+  const url = index !== undefined
+    ? `${API_BASE}/api/quiz/random?index=${index}`
+    : `${API_BASE}/api/quiz/random`;
+  const response = await fetch(url);
   return response.json();
 }
 
