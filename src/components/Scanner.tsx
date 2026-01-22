@@ -456,6 +456,14 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
         {/* Camera section */}
         <div className="relative bg-black" style={{ height: '35vh', minHeight: '200px' }}>
           <canvas ref={canvasRef} className="hidden" />
+          {/* Video element - always rendered but hidden when camera off */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className={`absolute inset-0 w-full h-full object-cover ${isStreaming ? '' : 'hidden'}`}
+          />
           {error ? (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center text-white">
@@ -514,15 +522,8 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
               )}
             </div>
           ) : (
-            /* Camera ON */
+            /* Camera ON - controls overlay */
             <>
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="absolute inset-0 w-full h-full object-cover"
-              />
               {/* Scan frame */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className={`w-48 h-48 border-2 rounded-2xl transition-colors ${

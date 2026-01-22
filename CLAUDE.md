@@ -360,6 +360,36 @@ CREATE TABLE ad_clicks (
 
 ---
 
+## 🇮🇸 Icelandic Grammar (Íslensk málfræði)
+
+**Use the `icelandic-reviewer` agent for grammar checking.**
+
+### Fallbeygingar (Case Declensions)
+
+| Fall | Spurning | Dæmi |
+|------|----------|------|
+| Nefnifall | Hver/hvað? | hestur, tunna |
+| Þolfall | Hvern/hvað? | hest, tunnu |
+| Þágufall | Hverjum/hverju? | hesti, tunnu |
+| Eignarfall | Hvers? | hests, tunnu |
+
+### Common Errors to Avoid
+
+| Wrong | Correct | Rule |
+|-------|---------|------|
+| með skilagjald | með skilagjaldi | með + þágufall |
+| þú skila | þú skilar | 2. persóna eintölu |
+| Endurvinnslan (þf.) | endurvinnsluna | þolfall með greini |
+| peningana | peninginn | eintala, ekki fleirtala |
+
+### Resources
+
+- **MCP Server:** `icelandic-morphology` (BÍN lookups via `.mcp.json`)
+- **API:** [Yfirlestur.is](https://yfirlestur.is/) (GreynirCorrect)
+- **Database:** [BÍN](https://bin.arnastofnun.is/) (Beygingarlýsing íslensks nútímamáls)
+
+---
+
 ## 🚫 What NOT to Do
 
 1. **Never classify PLA/3D prints as recyclable plastic**
@@ -369,6 +399,7 @@ CREATE TABLE ad_clicks (
 5. **Never expose API keys** (use wrangler secrets)
 6. **Never use string concatenation in SQL** (use parameterized queries)
 7. **Never skip rate limiting** (30 req/min per IP)
+8. **Never write Icelandic with wrong fallbeygingar** (use icelandic-reviewer agent)
 
 ---
 
@@ -407,5 +438,5 @@ CREATE TABLE ad_clicks (
 
 ---
 
-**This file is the source of truth for AI agents working on rusl.myx.is.**  
-**Last Updated:** January 19, 2026
+**This file is the source of truth for AI agents working on rusl.myx.is.**
+**Last Updated:** January 22, 2026
