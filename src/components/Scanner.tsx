@@ -39,9 +39,10 @@ interface ScannerProps {
   onOpenStats: () => void;
   onOpenSettings: () => void;
   onOpenTrip?: () => void;
+  onRecyclingItem?: (item: { item: string; bin: string; confidence: number }) => void;
 }
 
-export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, onOpenTrip }: ScannerProps) {
+export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, onOpenTrip, onRecyclingItem }: ScannerProps) {
   const { videoRef, canvasRef, isStreaming, error, startCamera, stopCamera, captureImage } = useCamera();
   const [isLoading, setIsLoading] = useState(false);
   const [pendingCount, setPendingCount] = useState(0); // Track queued images
@@ -328,6 +329,16 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
           result: response, // Store full result for re-display
         };
         setHistory(prev => [entry, ...prev]);
+
+        // Auto-add recycling center items to trip list
+        if (response.bin === 'recycling_center' && onRecyclingItem) {
+          addLog('Bætt við ferðalista 🚗', '♻️', 'info');
+          onRecyclingItem({
+            item: response.item,
+            bin: response.bin,
+            confidence: response.confidence,
+          });
+        }
 
         // Generate overlay for wide shots with multiple objects
         if (response.isWideShot && response.allObjects && response.allObjects.length > 1) {

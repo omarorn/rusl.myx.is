@@ -25,6 +25,7 @@ const ROUTES: Record<string, View> = {
 
 export default function App() {
   const [view, setView] = useState<View>('intro');
+  const [lastRecyclingItem, setLastRecyclingItem] = useState<{ item: string; bin: string; confidence: number } | null>(null);
 
   // Handle hash-based routing
   const handleHashChange = useCallback(() => {
@@ -96,6 +97,10 @@ export default function App() {
           onOpenStats={() => navigateTo('stats')}
           onOpenSettings={() => navigateTo('settings')}
           onOpenTrip={() => navigateTo('trip')}
+          onRecyclingItem={(item) => {
+            // Save item for trip - no auto-navigation
+            setLastRecyclingItem(item);
+          }}
         />
       )}
       {view === 'stats' && <Stats onClose={() => navigateTo('scanner')} />}
@@ -107,6 +112,7 @@ export default function App() {
         <TripScreen
           onScanItem={() => navigateTo('scanner')}
           onClose={() => navigateTo('scanner')}
+          lastScannedItem={lastRecyclingItem || undefined}
         />
       )}
     </div>

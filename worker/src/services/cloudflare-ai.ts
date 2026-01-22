@@ -84,8 +84,8 @@ export async function classifyWithCloudflareAI(
     const parsed = JSON.parse(jsonMatch[0]) as CloudflareAIResponse;
     console.log('[CF-AI] Parsed result:', parsed.item, '→', parsed.bin, 'conf:', parsed.confidence);
 
-    // Validate bin type
-    const validBins = ['paper', 'plastic', 'food', 'mixed', 'recycling_center'];
+    // Validate bin type (include deposit for consistency with Gemini)
+    const validBins = ['paper', 'plastic', 'food', 'mixed', 'recycling_center', 'deposit'];
     if (!validBins.includes(parsed.bin)) {
       parsed.bin = 'mixed';
     }

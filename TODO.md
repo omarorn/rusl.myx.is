@@ -32,6 +32,26 @@ Verkefnalisti fyrir Íslensku ruslaflokkunarkerfið.
 - [x] TTS með íslensku röddum
 - [x] PWA stuðningur
 
+### Quiz Timer (v1.3.0) ✅
+- [x] Per-question timer í stað game timer
+- [x] Stillanlegt: 3, 5, 10, 15, 30 sekúndur
+- [x] Sjálfgefið 3 sekúndur
+- [x] Timeout telst sem rangt svar
+- [x] Timer UI í Settings
+
+### Multi-Domain & Tungumál (v1.3.0) ✅
+- [x] rusl.myx.is → Íslenska sjálfgefið
+- [x] trash.myx.is → Enska sjálfgefið
+- [x] wrangler.toml með báðum lénum
+- [x] CORS stuðningur fyrir bæði lén
+
+### Íslensk Málfræði (v1.3.0) ✅
+- [x] Endurbættar AI prompts með réttum fallbeygingum
+- [x] icelandic-reviewer agent búið til
+- [x] icelandic-grammar skill búið til
+- [x] Icelandic Morphology MCP þjónn stilltur
+- [x] CLAUDE.md uppfært með málfræðikafla
+
 ## 🟡 Næst (Up Next)
 
 ### UX Endurbætur
@@ -72,4 +92,4 @@ npx wrangler d1 execute trash-myx-db --local --command "SELECT * FROM quiz_image
 
 ---
 
-Síðast uppfært: 2026-01-19
+Síðast uppfært: 2026-01-22

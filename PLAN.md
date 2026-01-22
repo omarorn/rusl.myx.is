@@ -1,13 +1,15 @@
 # rusl.myx.is — Verkefna Plan
-> Síðast uppfært: 19. janúar 2026
+> Síðast uppfært: 22. janúar 2026
+> Version: 1.3.0
 
 ---
 
 ## 🎯 Verkefnisyfirlit
 
-**Tvær vörur:**
-1. **📱 trash.myx.is** — PWA fyrir síma (React + Vite)
-2. **🏠 TrashPi** — IoT device fyrir heimili/skóla
+**Tvær vörur, tvö lén:**
+1. **📱 rusl.myx.is** — PWA á íslensku (sjálfgefið)
+2. **📱 trash.myx.is** — PWA á ensku (sjálfgefið)
+3. **🏠 TrashPi** — IoT device fyrir heimili/skóla
 
 **Tech Stack:**
 - Frontend: React 18 + TypeScript + Tailwind CSS + Vite PWA
@@ -18,7 +20,7 @@
 
 ## ✅ Lokið (Completed)
 
-### Backend - Worker v1.2.0 ✅
+### Backend - Worker v1.3.0 ✅
 
 | Route | Endpoint | Lýsing |
 |-------|----------|--------|
@@ -79,6 +81,24 @@
 - [x] Cartoon stíll með nanó banana
 - [x] Pabba-brandara í svörum
 
+### Quiz & Settings (v1.3.0) ✅
+- [x] Per-question timer (stillanlegt: 3, 5, 10, 15, 30 sek)
+- [x] Timeout telst sem rangt svar
+- [x] Timer UI í Settings
+
+### Multi-Domain & Language (v1.3.0) ✅
+- [x] rusl.myx.is → Íslenska sjálfgefið
+- [x] trash.myx.is → Enska sjálfgefið
+- [x] Domain detection í SettingsContext
+- [x] wrangler.toml með báðum lénum
+
+### Íslensk Málfræði Tools (v1.3.0) ✅
+- [x] Endurbættar AI prompts með réttum fallbeygingum
+- [x] icelandic-reviewer agent (.claude/Agents/)
+- [x] icelandic-grammar skill (.claude/skills/)
+- [x] Icelandic Morphology MCP server (.mcp.json)
+- [x] CLAUDE.md uppfært með málfræðikafla
+
 ---
 
 ## 🔄 Í Vinnslu / Næst
@@ -93,9 +113,10 @@
 - [ ] Performance optimization
 - [ ] Offline stuðningur (full offline mode)
 
-### Deploy
-- [ ] Staðfesta custom domain `trash.myx.is`
-- [ ] SSL certificate verification
+### Deploy ✅
+- [x] Custom domain `trash.myx.is` virkt
+- [x] Custom domain `rusl.myx.is` virkt
+- [x] SSL certificate verification
 
 ---
 
@@ -120,10 +141,12 @@
 ```
 C:\git\rusl.myx.is\
 ├── .claude/                     # Claude Code config
-│   ├── Agents/
+│   ├── Agents/                  # icelandic-reviewer.md
 │   ├── commands/
-│   ├── rules/
+│   ├── rules/                   # golden-rules.md, task-status.md
+│   ├── skills/                  # icelandic-grammar.md
 │   └── settings.json
+├── .mcp.json                    # MCP servers (icelandic-morphology)
 ├── dist/                        # PWA build output ✅
 │   ├── assets/
 │   ├── manifest.webmanifest
@@ -239,7 +262,7 @@ wrangler secret put ADMIN_PASSWORD
 
 ---
 
-## 📊 API Endpoints (v1.2.0)
+## 📊 API Endpoints (v1.3.0)
 
 ### Core Classification
 | Method | Path | Lýsing |
@@ -290,7 +313,8 @@ wrangler secret put ADMIN_PASSWORD
 
 ## 🔗 Tenglar
 
-- **Live:** https://trash.myx.is (pending)
+- **Live (IS):** https://rusl.myx.is
+- **Live (EN):** https://trash.myx.is
 - **Repo:** github.com/omarorn/rusl.myx.is
 - **SORPA:** sorpa.is/flokkunartafla
 - **2076:** 2076.is
@@ -315,4 +339,4 @@ wrangler secret put ADMIN_PASSWORD
 
 ---
 
-**Staða:** 🟢 Production Ready (pending deployment)
+**Staða:** 🟢 Production Ready - v1.3.0 deployed on both domains
