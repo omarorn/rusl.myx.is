@@ -2,11 +2,15 @@
 
 This file provides guidance to Claude Code and AI agents when working with this repository.
 
-**Project:** rusl.myx.is — Íslensk ruslaflokkun með gervigreind  
-**Owner:** 2076 ehf (omar@2076.is)  
-**Repository:** github.com/omarorn/rusl.myx.is  
-**Version:** 1.2.0  
+**Project:** rusl.myx.is — Íslensk ruslaflokkun með gervigreind
+**Owner:** 2076 ehf (omar@2076.is)
+**Repository:** github.com/omarorn/rusl.myx.is
+**Version:** 1.3.0
 **Philosophy:** Design invisible systems that make daily life effortless
+
+**Domains:**
+- `rusl.myx.is` — Icelandic default (íslenska)
+- `trash.myx.is` — English default
 
 ---
 
@@ -29,10 +33,12 @@ An Icelandic waste classification system with two products:
 ```
 rusl.myx.is/
 ├── .claude/                 # Claude Code configuration
-│   ├── Agents/              # Custom agent prompts
+│   ├── Agents/              # Custom agent prompts (icelandic-reviewer)
 │   ├── commands/            # Slash commands
 │   ├── rules/               # Coding rules
+│   ├── skills/              # Skills (icelandic-grammar, deploy-all)
 │   └── settings.json        # Plugin settings
+├── .mcp.json                # MCP servers (icelandic-morphology for BÍN)
 ├── dist/                    # PWA build output
 ├── public/                  # Static assets (icons, images)
 ├── src/                     # Frontend React source
@@ -347,7 +353,7 @@ CREATE TABLE ad_clicks (
 | Quiz.tsx | Quiz game with 3 modes (normal, hard, expert) |
 | Stats.tsx | User statistics + leaderboard |
 | Admin.tsx | Image approval + batch operations |
-| Settings.tsx | User preferences (region, TTS, cartoon mode) |
+| Settings.tsx | User preferences (region, quiz timer, language) |
 | LiveMode.tsx | Real-time classification stream |
 | AdSlot.tsx | Sponsor advertising display |
 | WelcomeIntro.tsx | First-time user onboarding |

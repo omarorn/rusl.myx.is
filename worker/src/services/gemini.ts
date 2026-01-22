@@ -47,7 +47,7 @@ VÍÐMYNDIR (WIDE SHOTS):
 Ef myndin sýnir marga hluti eða stóra senu:
 1. Finndu ALLA hluti sem gætu verið rusl
 2. Bættu við fyndnum athugasemdum um hluti sem eru EKKI rusl
-3. Tilgreindu staðsetningu aðalrruslsins (crop_box)
+3. Tilgreindu staðsetningu aðalruslsins (crop_box)
 
 GRÍNSAMIR KOMMENTAR fyrir hluti sem EKKI eru rusl:
 - Húsgögn: "Sófinn er of þægilegur til að henda... en ég dæmi þig ekki."
@@ -70,7 +70,7 @@ Svaraðu AÐEINS með JSON:
 {
   "item": "nafn aðalhlutarins á íslensku (t.d. 'Gosdós', 'Pappakassi')",
   "bin": "paper|plastic|food|mixed|recycling_center|deposit",
-  "reason": "náttúruleg íslensk setning sem útskýrir flokkun, eins og þú værir að tala við manneskju (t.d. 'Gosdósir með skilagjald skila þú í Endurvinnslan og færð peningana til baka!' eða 'Pappakassar fara í bláu tunnuna, en mundu að brjóta þá saman!')",
+  "reason": "náttúruleg íslensk setning með réttum fallbeygingum, eins og þú værir að tala við manneskju (t.d. 'Gosdósir með skilagjaldi skilar þú í endurvinnsluna og færð peninginn til baka!' eða 'Pappakassa brýtur þú saman og setur í bláu tunnuna!')",
   "confidence": 0.0-1.0,
   "fun_fact": "stuttur pabba-brandari um rusl eða endurvinnslu á íslensku",
   "is_wide_shot": true/false,

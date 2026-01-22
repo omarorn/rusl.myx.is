@@ -95,6 +95,23 @@ export async function getStats(): Promise<UserStats> {
   return response.json();
 }
 
+// Generate cartoon icon from an image
+export async function generateItemIcon(
+  imageBase64: string,
+  itemName: string
+): Promise<{ success: boolean; iconImage?: string; error?: string }> {
+  try {
+    const response = await fetch(`${API_BASE}/api/image/icon`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: imageBase64, itemName }),
+    });
+    return response.json();
+  } catch (err) {
+    return { success: false, error: 'Network error' };
+  }
+}
+
 // Quiz API
 export interface QuizQuestion {
   id: string;

@@ -25,7 +25,7 @@ MIKILVÆGAR REGLUR (VERÐUR AÐ FYLGJA):
 VARÚÐ: Ekki rugla saman málmi og plasti! Rammar, verkfæri og stórir málmhlutir eru EKKI plast.
 
 Skoðaðu myndina og svaraðu EINGÖNGU með JSON (ekkert annað):
-{"item":"nafn á íslensku (t.d. Gosdós, Mjólkurfernu)","bin":"paper|plastic|food|mixed|recycling_center","reason":"náttúruleg íslensk setning eins og þú talar við manneskju (t.d. 'Þetta fer í grænu tunnuna með öðru plasti!')","confidence":0.95}`;
+{"item":"nafn á íslensku (t.d. Gosdós, Mjólkuferja)","bin":"paper|plastic|food|mixed|recycling_center","reason":"náttúruleg íslensk setning með réttum fallbeygingum (t.d. 'Þetta setur þú í grænu tunnuna með öðru plasti!' eða 'Pappann brýtur þú saman og setur í bláu tunnuna!')","confidence":0.95}`;
 
 export interface CloudflareAIResponse {
   item: string;

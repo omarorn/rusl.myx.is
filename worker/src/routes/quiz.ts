@@ -3,6 +3,18 @@ import type { Env } from '../types';
 import { BIN_INFO } from '../services/iceland-rules';
 import { generateIcon } from '../services/gemini';
 
+// Safe base64 encoding that doesn't cause call stack overflow for large images
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 0x8000; // 32KB chunks
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
+  }
+  return btoa(binary);
+}
+
 const quiz = new Hono<{ Bindings: Env }>();
 
 interface QuizImage {
@@ -497,7 +509,7 @@ quiz.post('/generate-icon/:id', async (c) => {
 
     // Convert R2 object to base64
     const imageArrayBuffer = await originalImage.arrayBuffer();
-    const imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageArrayBuffer)));
+    const imageBase64 = arrayBufferToBase64(imageArrayBuffer);
 
     // Generate icon
     if (!env.GEMINI_API_KEY) {
@@ -515,8 +527,12 @@ quiz.post('/generate-icon/:id', async (c) => {
     }
 
     // Save icon to R2
-    const iconKey = image.image_key.replace('quiz/', 'quiz/icons/').replace('.jpg', '.png');
-    const iconData = Uint8Array.from(atob(iconResult.iconImage), c => c.charCodeAt(0));
+    const iconKey = image.image_key
+      .replace('quiz/', 'quiz/icons/')
+      .replace(/\.(jpg|jpeg|png|webp)$/i, '.png');
+    // Strip data URL prefix if present
+    const rawBase64 = iconResult.iconImage.replace(/^data:image\/\w+;base64,/, '');
+    const iconData = Uint8Array.from(atob(rawBase64), c => c.charCodeAt(0));
 
     await env.IMAGES.put(iconKey, iconData, {
       httpMetadata: { contentType: 'image/png' },
@@ -578,7 +594,7 @@ quiz.post('/generate-missing-icons', async (c) => {
 
         // Convert to base64
         const imageArrayBuffer = await originalImage.arrayBuffer();
-        const imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageArrayBuffer)));
+        const imageBase64 = arrayBufferToBase64(imageArrayBuffer);
 
         // Generate icon
         console.log(`[Quiz Icon Batch] Generating icon for: ${image.item} (${image.id})`);
@@ -590,8 +606,12 @@ quiz.post('/generate-missing-icons', async (c) => {
         }
 
         // Save icon to R2
-        const iconKey = image.image_key.replace('quiz/', 'quiz/icons/').replace('.jpg', '.png');
-        const iconData = Uint8Array.from(atob(iconResult.iconImage), c => c.charCodeAt(0));
+        const iconKey = image.image_key
+          .replace('quiz/', 'quiz/icons/')
+          .replace(/\.(jpg|jpeg|png|webp)$/i, '.png');
+        // Strip data URL prefix if present
+        const rawBase64 = iconResult.iconImage.replace(/^data:image\/\w+;base64,/, '');
+        const iconData = Uint8Array.from(atob(rawBase64), c => c.charCodeAt(0));
 
         await env.IMAGES.put(iconKey, iconData, {
           httpMetadata: { contentType: 'image/png' },

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCamera } from '../hooks/useCamera';
-import { identifyItem, generateCartoon, getQuizImageUrl, type IdentifyResponse, type DetectedObject } from '../services/api';
+import { identifyItem, generateCartoon, generateItemIcon, getQuizImageUrl, type IdentifyResponse, type DetectedObject } from '../services/api';
 import { AdSlot } from './AdSlot';
 import { cropImageClient, drawCropOverlay } from '../utils/imageUtils';
 
@@ -52,6 +52,9 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
   const [overlayImage, setOverlayImage] = useState<string | null>(null);
   const [cartoonImage, setCartoonImage] = useState<string | null>(null);
   const [isGeneratingCartoon, setIsGeneratingCartoon] = useState(false);
+  const [generatedIcon, setGeneratedIcon] = useState<string | null>(null); // Cute cartoon icon
+  const [isGeneratingIcon, setIsGeneratingIcon] = useState(false);
+  const [showIconView, setShowIconView] = useState(true); // Toggle between icon and original image
   const [showCartoon, setShowCartoon] = useState(true);  // Cartoon mode as default
   const [showAllObjects, setShowAllObjects] = useState(false);
   const [selectedObjectIndex, setSelectedObjectIndex] = useState(0);
@@ -338,6 +341,27 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
             });
         }
 
+        // Generate cute icon for the item (like ruslgreinir-google)
+        setGeneratedIcon(null); // Clear previous icon
+        setShowIconView(true); // Reset to show icon when new one is generated
+        setIsGeneratingIcon(true);
+        addLog('Teikna ikon...', '🎨', 'pending');
+        generateItemIcon(image, response.item)
+          .then(iconResponse => {
+            if (iconResponse.success && iconResponse.iconImage) {
+              setGeneratedIcon(iconResponse.iconImage);
+              addLog('Ikon tilbúið!', '✨', 'success');
+            } else {
+              addLog('Gat ekki teiknað ikon', '⚠️', 'info');
+            }
+          })
+          .catch(() => {
+            addLog('Gat ekki teiknað ikon', '⚠️', 'info');
+          })
+          .finally(() => {
+            setIsGeneratingIcon(false);
+          });
+
         // Generate AI cartoon in background (only for last image in batch)
         if (showCartoon && pendingCount <= 1) {
           setIsGeneratingCartoon(true);
@@ -406,7 +430,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
       </div>
 
       {/* Header */}
-      <header className="safe-top bg-green-600 text-white p-3 flex items-center justify-between shadow-lg">
+      <header className="safe-top bg-green-600 text-white p-3 flex items-center justify-between shadow-lg relative z-40">
         <h1 className="text-lg font-bold">♻️ Ruslaflokkun</h1>
         <div className="flex gap-2">
           <button onClick={onOpenLive} className="text-xl p-1" title="Talandi lýsing">🔊</button>
@@ -419,6 +443,16 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
 
       {/* Main content - scrollable */}
       <main className="flex-1 overflow-auto">
+        {/* Hidden file input for image selection */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+
         {/* Camera section */}
         <div className="relative bg-black" style={{ height: '35vh', minHeight: '200px' }}>
           <canvas ref={canvasRef} className="hidden" />
@@ -427,9 +461,60 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
               <div className="text-center text-white">
                 <div className="text-4xl mb-2">📷</div>
                 <p className="text-red-400">{error}</p>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-4 px-4 py-2 bg-green-600 rounded-lg"
+                >
+                  📁 Velja mynd
+                </button>
               </div>
             </div>
+          ) : !isStreaming ? (
+            /* Camera OFF - show last result or placeholder */
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900">
+              {/* Show last result image if available */}
+              {currentImage ? (
+                <img
+                  src={currentImage}
+                  alt="Síðasta mynd"
+                  className="absolute inset-0 w-full h-full object-contain opacity-30"
+                />
+              ) : history.length > 0 && (history[0].imageKey || history[0].image) ? (
+                <img
+                  src={history[0].imageKey ? getQuizImageUrl(history[0].imageKey) : history[0].image}
+                  alt="Síðasta mynd"
+                  className="absolute inset-0 w-full h-full object-contain opacity-30"
+                />
+              ) : null}
+
+              <div className="relative z-10 text-center">
+                <div className="text-5xl mb-4">📷</div>
+                <p className="text-white/70 mb-4">Myndavél slökkt</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={toggleCamera}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium transition-colors"
+                  >
+                    🎥 Kveikja
+                  </button>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
+                  >
+                    📁 Velja mynd
+                  </button>
+                </div>
+              </div>
+
+              {/* Pending indicator */}
+              {pendingCount > 0 && (
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-3 py-1 rounded-full text-sm font-medium animate-pulse">
+                  ⏳ {pendingCount} í vinnslu
+                </div>
+              )}
+            </div>
           ) : (
+            /* Camera ON */
             <>
               <video
                 ref={videoRef}
@@ -460,6 +545,13 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
                   👀 Hreyfing greind...
                 </div>
               )}
+              {/* Camera toggle (top left) */}
+              <button
+                onClick={toggleCamera}
+                className="absolute top-3 left-3 px-3 py-1 rounded-full text-sm font-medium bg-red-500 text-white"
+              >
+                🔴 Slökkva
+              </button>
               {/* Auto-capture toggle */}
               <button
                 onClick={() => {
@@ -476,7 +568,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
               </button>
               {/* Capture button - allows rapid-fire */}
               <button
-                onClick={handleCapture}
+                onClick={() => handleCapture()}
                 disabled={!isStreaming}
                 className="absolute bottom-3 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full bg-white border-4 border-green-500
                          flex items-center justify-center shadow-lg disabled:opacity-50 active:scale-95 transition-transform"
@@ -503,10 +595,29 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
             className="p-4 text-white"
             style={{ backgroundColor: currentResult.confidence === 0 ? '#dc2626' : (currentResult.binInfo?.color || '#6b7280') }}
           >
-            {/* Image with cartoon effect and nano banana */}
+            {/* Result card with icon (like ruslgreinir-google) */}
             <div className="flex items-start gap-4 mb-3">
-              {currentImage && (
-                <div className="relative flex-shrink-0">
+              {/* Icon box - shows generated icon or loading spinner, clickable to toggle */}
+              <div
+                className="relative flex-shrink-0 w-24 h-24 bg-white rounded-xl overflow-hidden flex items-center justify-center border-2 border-white/30 shadow-lg cursor-pointer active:scale-95 transition-transform"
+                onClick={() => generatedIcon && currentImage && setShowIconView(!showIconView)}
+                title={generatedIcon && currentImage ? 'Smelltu til að skipta milli' : undefined}
+              >
+                {isGeneratingIcon ? (
+                  /* Loading state - generating icon */
+                  <div className="flex flex-col items-center justify-center text-gray-400">
+                    <div className="w-8 h-8 border-3 border-green-500 border-t-transparent rounded-full animate-spin mb-1" />
+                    <span className="text-xs">Teikna...</span>
+                  </div>
+                ) : generatedIcon && showIconView ? (
+                  /* Show generated cute icon */
+                  <img
+                    src={generatedIcon}
+                    alt={currentResult.item}
+                    className="w-full h-full object-cover"
+                  />
+                ) : currentImage ? (
+                  /* Show original/cartoon image */
                   <img
                     src={
                       showCartoon && cartoonImage
@@ -516,40 +627,37 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
                           : currentImage
                     }
                     alt=""
-                    className="w-20 h-20 object-cover shadow-lg rounded-2xl"
+                    className="w-full h-full object-cover"
                     style={getCartoonStyle()}
                   />
-                  {/* Loading indicator for cartoon generation */}
-                  {isGeneratingCartoon && showCartoon && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-2xl">
-                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    </div>
-                  )}
-                  {/* Wide shot indicator */}
-                  {currentResult?.isWideShot && (
-                    <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs px-1 rounded">
-                      {currentResult.allObjects?.length || 0}
-                    </div>
-                  )}
-                  {/* Nano banana for scale */}
-                  {showCartoon && (
-                    <div
-                      className="absolute -bottom-1 -right-1 text-2xl drop-shadow-lg animate-bounce"
-                      title={getBananaComment()}
-                    >
-                      {NANO_BANANA}
-                    </div>
-                  )}
-                  {/* Toggle button */}
-                  <button
-                    onClick={() => setShowCartoon(!showCartoon)}
-                    className="absolute -top-1 -left-1 w-6 h-6 bg-black/50 rounded-full text-xs flex items-center justify-center"
-                    title={showCartoon ? 'Sýna frummynd' : 'Sýna teiknimynd'}
+                ) : (
+                  /* Placeholder */
+                  <span className="text-4xl">{currentResult.binInfo?.icon || '🗑️'}</span>
+                )}
+                {/* Wide shot indicator */}
+                {currentResult?.isWideShot && (
+                  <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs px-1 rounded">
+                    {currentResult.allObjects?.length || 0}
+                  </div>
+                )}
+                {/* Toggle indicator when both images available */}
+                {generatedIcon && currentImage && (
+                  <div className="absolute -top-1 -left-1 bg-black/60 text-white text-xs px-1 rounded">
+                    {showIconView ? '🎨' : '📷'}
+                  </div>
+                )}
+                {/* Nano banana for scale */}
+                {(generatedIcon || (showCartoon && currentImage)) && (
+                  <div
+                    className="absolute -bottom-1 -right-1 text-xl drop-shadow-lg animate-bounce"
+                    title={getBananaComment()}
                   >
-                    {showCartoon ? '📷' : '🎨'}
-                  </button>
-                </div>
-              )}
+                    {NANO_BANANA}
+                  </div>
+                )}
+              </div>
+
+              {/* Text content */}
               <div className="flex-1 min-w-0">
                 <div className="text-2xl font-bold flex items-center gap-2 flex-wrap">
                   {currentResult.binInfo?.icon} {currentResult.item}

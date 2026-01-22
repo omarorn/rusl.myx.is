@@ -156,6 +156,13 @@ return c.json({ error: 'Villa kom upp.' }, 500);
 - Deploy with `npm run deploy`
 - Monitor logs with `npx wrangler tail`
 
+
+### before createing or updating features
+ - Always create the tests first.
+ - test thourogly and update previus documents rather than creating new
+ - always check if feature exists before creating it.
+ - always update the menu with new pages or the todo.md
+
 ---
 
 **These golden rules ensure consistent, high-quality code for rusl.myx.is.**
