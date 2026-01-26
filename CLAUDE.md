@@ -49,11 +49,13 @@ rusl.myx.is/
 │   └── services/            # API client
 ├── worker/                  # Backend Cloudflare Worker
 │   ├── src/
+│   │   ├── __tests__/       # Unit tests (Vitest)
 │   │   ├── data/            # Static data (regions)
 │   │   ├── routes/          # API route handlers
 │   │   ├── services/        # Business logic
 │   │   └── types.ts         # TypeScript types
-│   └── migrations/          # D1 SQL migrations
+│   ├── migrations/          # D1 SQL migrations
+│   └── vitest.config.ts     # Test configuration
 ├── trashpi/                 # Raspberry Pi code (IoT)
 ├── scripts/                 # Utility scripts
 ├── CLAUDE.md                # This file
@@ -94,6 +96,17 @@ npx wrangler d1 execute trash-myx-db --remote --command "SELECT COUNT(*) FROM us
 npx wrangler d1 migrations apply trash-myx-db --local
 npx wrangler d1 migrations apply trash-myx-db --remote
 ```
+
+### Testing (Backend)
+```bash
+cd worker
+npm test                 # Run all tests once
+npm run test:watch       # Run tests in watch mode
+```
+
+**Test Coverage:**
+- `iceland-rules.ts` — 28 tests covering bin mapping, overrides, and Iceland-specific rules
+- Uses Vitest with Node environment
 
 ---
 

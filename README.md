@@ -42,6 +42,16 @@ pip install -r requirements.txt
 python main.py
 ```
 
+### Prófanir (Testing)
+
+```bash
+cd worker
+npm test                 # Keyra öll próf
+npm run test:watch       # Keyra í watch mode
+```
+
+**Próf:** 28 unit tests fyrir `iceland-rules.ts` (bin mapping, overrides, Ísland-sértækar reglur)
+
 ---
 
 ## 📁 Möppuskipulag
@@ -50,6 +60,7 @@ python main.py
 rusl.myx.is/
 ├── worker/                 # Cloudflare Worker backend
 │   ├── src/
+│   │   ├── __tests__/      # Unit tests (Vitest)
 │   │   ├── index.ts        # Hono entry point
 │   │   ├── routes/         # API routes
 │   │   │   ├── identify.ts # POST /api/identify
@@ -60,6 +71,7 @@ rusl.myx.is/
 │   │       ├── gemini.ts
 │   │       └── iceland-rules.ts
 │   ├── migrations/
+│   ├── vitest.config.ts    # Test config
 │   ├── wrangler.toml
 │   └── package.json
 ├── src/                    # PWA React frontend

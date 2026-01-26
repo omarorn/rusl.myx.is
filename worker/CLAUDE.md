@@ -35,7 +35,32 @@ npx wrangler d1 execute trash-myx-db --remote --file=./migrations/0001_init.sql 
 wrangler secret put HF_API_KEY
 wrangler secret put GEMINI_API_KEY
 wrangler secret put CLAUDE_API_KEY  # Optional for deep review
+
+# Testing
+npm test                 # Run all tests once
+npm run test:watch       # Run tests in watch mode
 ```
+
+## Testing
+
+**Framework:** Vitest with Node environment
+
+**Test Files:**
+- `src/__tests__/iceland-rules.test.ts` — 28 tests for bin mapping, overrides, Iceland-specific rules
+
+**Run Tests:**
+```bash
+npm test                 # Run once
+npm run test:watch       # Watch mode
+```
+
+**Critical Tests:**
+- PLA/3D printed → mixed (NOT plastic)
+- Bioplastics → mixed (NOT food)
+- TetraPak → paper
+- Foam/styrofoam → recycling_center
+- Deposit items → deposit
+- Word boundary matching for short keywords (pla, abs, petg)
 
 ## Architecture
 
@@ -57,6 +82,7 @@ Image (base64) → Gemini 2.0 Flash → Iceland Rules → Response
 - `src/services/gemini.ts` — Gemini 2.0 Flash primary classifier
 - `src/services/review.ts` — Hourly post-processing with Gemini Pro
 - `src/data/regions.ts` — Regional waste rules documentation
+- `src/__tests__/iceland-rules.test.ts` — Unit tests for bin mapping
 
 **Cloudflare Bindings:**
 - `DB` (D1) — Scans, users, quiz_images, review_log tables

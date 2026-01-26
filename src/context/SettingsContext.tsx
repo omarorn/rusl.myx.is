@@ -7,9 +7,11 @@ interface Settings {
   language: Language;
   region: Region;
   quizTimer: number;
+  cartoonMode: boolean;
   setLanguage: (lang: Language) => void;
   setRegion: (region: Region) => void;
   setQuizTimer: (seconds: number) => void;
+  setCartoonMode: (enabled: boolean) => void;
 }
 
 const SettingsContext = createContext<Settings | null>(null);
@@ -36,6 +38,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(getDefaultLanguage);
   const [region, setRegionState] = useState<Region>('sorpa');
   const [quizTimer, setQuizTimerState] = useState<number>(3);
+  const [cartoonMode, setCartoonModeState] = useState<boolean>(true);
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -43,6 +46,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       const savedLang = localStorage.getItem('rusl_language') as Language;
       const savedRegion = localStorage.getItem('rusl_region') as Region;
       const savedQuizTimer = localStorage.getItem('rusl_quiz_timer');
+      const savedCartoonMode = localStorage.getItem('rusl_cartoon_mode');
 
       if (savedLang && (savedLang === 'is' || savedLang === 'en')) {
         setLanguageState(savedLang);
@@ -58,6 +62,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         if (timer >= 1 && timer <= 30) {
           setQuizTimerState(timer);
         }
+      }
+
+      if (savedCartoonMode !== null) {
+        setCartoonModeState(savedCartoonMode === 'true');
       }
     } catch {
       // localStorage unavailable
@@ -85,8 +93,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     } catch { /* ignore */ }
   };
 
+  const setCartoonMode = (enabled: boolean) => {
+    setCartoonModeState(enabled);
+    try {
+      localStorage.setItem('rusl_cartoon_mode', String(enabled));
+    } catch { /* ignore */ }
+  };
+
   return (
-    <SettingsContext.Provider value={{ language, region, quizTimer, setLanguage, setRegion, setQuizTimer }}>
+    <SettingsContext.Provider value={{ language, region, quizTimer, cartoonMode, setLanguage, setRegion, setQuizTimer, setCartoonMode }}>
       {children}
     </SettingsContext.Provider>
   );

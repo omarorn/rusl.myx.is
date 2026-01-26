@@ -6,14 +6,18 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:migrate": "wrangler d1 execute trash-myx-db --local --file=./migrations/0001_init.sql"
+    "db:migrate": "wrangler d1 execute trash-myx-db --local --file=./migrations/0001_init.sql",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "hono": "^4.11.4"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.12.5",
     "@cloudflare/workers-types": "^4.20241127.0",
     "typescript": "^5.0.0",
+    "vitest": "^4.0.17",
     "wrangler": "^4.59.2"
   }
 }

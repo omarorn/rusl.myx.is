@@ -186,11 +186,17 @@ async function saveQuizImage(
       }
     }
 
-    // Save to quiz_images table (approved = 0 = pending admin review)
+    // Save to quiz_images table
+    // Auto-approve if confidence >= 85%, otherwise pending admin review
+    const autoApprove = confidence >= 0.85 ? 1 : 0;
     await db.prepare(`
       INSERT INTO quiz_images (image_key, icon_key, item, bin, reason, confidence, submitted_by, approved)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 0)
-    `).bind(imageKey, savedIconKey, item, bin, reason, confidence, userHash).run();
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(imageKey, savedIconKey, item, bin, reason, confidence, userHash, autoApprove).run();
+
+    if (autoApprove) {
+      console.log(`[Quiz] Auto-approved image: ${item} (${Math.round(confidence * 100)}%)`);
+    }
 
     return { imageKey, iconKey: savedIconKey };
   } catch (err) {

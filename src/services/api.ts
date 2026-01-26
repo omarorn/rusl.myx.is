@@ -1,5 +1,7 @@
-const API_BASE = import.meta.env.PROD 
-  ? 'https://trash.myx.is' 
+import { isOnline, queueScan, type QueuedScan } from './offlineQueue';
+
+const API_BASE = import.meta.env.PROD
+  ? 'https://trash.myx.is'
   : 'http://localhost:8787';
 
 export interface BinInfo {
@@ -76,18 +78,74 @@ function getSettings(): { language: Language; region: Region } {
 
 export async function identifyItem(imageBase64: string): Promise<IdentifyResponse> {
   const { language, region } = getSettings();
+  const userHash = getUserHash();
 
-  const response = await fetch(`${API_BASE}/api/identify`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      image: imageBase64,
-      userHash: getUserHash(),
-      language,
-      region,
-    }),
-  });
-  return response.json();
+  // If offline, queue the scan and return a placeholder response
+  if (!isOnline()) {
+    try {
+      await queueScan({
+        image: imageBase64,
+        timestamp: Date.now(),
+        userHash,
+        language,
+        region,
+      });
+
+      return {
+        success: true,
+        item: 'Í biðröð',
+        bin: 'mixed',
+        binInfo: {
+          name_is: 'Vistað offline',
+          color: '#6b7280',
+          icon: '📴',
+        },
+        reason: 'Þessi skönnun verður samstillt þegar nettenging er komin.',
+        confidence: 0,
+        points: 0,
+        streak: 0,
+        funFact: 'Vissir þú að appið virkar líka án nettengingar?',
+      };
+    } catch (err) {
+      console.error('Failed to queue scan:', err);
+      return {
+        success: false,
+        item: 'Villa',
+        bin: 'mixed',
+        binInfo: {
+          name_is: 'Villa',
+          color: '#dc2626',
+          icon: '❌',
+        },
+        reason: 'Gat ekki vistað skönnun offline.',
+        confidence: 0,
+        points: 0,
+        streak: 0,
+        error: 'Offline queue failed',
+      };
+    }
+  }
+
+  // Online - make the API request
+  try {
+    const response = await fetch(`${API_BASE}/api/identify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image: imageBase64,
+        userHash,
+        language,
+        region,
+      }),
+    });
+    return response.json();
+  } catch (err) {
+    // Network error - try to queue
+    if (!isOnline()) {
+      return identifyItem(imageBase64); // Recursively try offline mode
+    }
+    throw err;
+  }
 }
 
 export async function getStats(): Promise<UserStats> {

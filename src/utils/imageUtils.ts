@@ -47,6 +47,16 @@ export async function cropImageClient(
   });
 }
 
+// Bin type to color mapping for visual consistency
+const BIN_COLORS: Record<string, string> = {
+  paper: '#3b82f6',     // Blue
+  plastic: '#22c55e',   // Green
+  food: '#a16207',      // Brown
+  mixed: '#6b7280',     // Gray
+  recycling_center: '#a855f7', // Purple
+  deposit: '#ec4899',   // Pink
+};
+
 /**
  * Draw crop box overlay on an image
  * @param imageBase64 - Base64 encoded image
@@ -58,6 +68,7 @@ export async function drawCropOverlay(
   imageBase64: string,
   objects: Array<{
     item: string;
+    bin?: string;
     crop_box?: { x: number; y: number; width: number; height: number };
     is_trash: boolean;
   }>,
@@ -89,24 +100,56 @@ export async function drawCropOverlay(
         const w = box.width * img.width;
         const h = box.height * img.height;
 
-        // Primary object gets green, others get yellow
+        // Primary object gets solid line, others get dashed
         const isPrimary = index === primaryIndex;
-        ctx.strokeStyle = isPrimary ? '#10b981' : (obj.is_trash ? '#f59e0b' : '#6b7280');
-        ctx.lineWidth = isPrimary ? 3 : 2;
+
+        // Use bin color if available, otherwise use default logic
+        let color: string;
+        if (isPrimary) {
+          color = '#10b981'; // Always green for primary
+        } else if (obj.bin && BIN_COLORS[obj.bin]) {
+          color = BIN_COLORS[obj.bin];
+        } else if (obj.is_trash) {
+          color = '#f59e0b'; // Yellow for trash without bin info
+        } else {
+          color = '#6b7280'; // Gray for non-trash
+        }
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = isPrimary ? 4 : 2;
         ctx.setLineDash(isPrimary ? [] : [5, 5]);
 
         ctx.strokeRect(x, y, w, h);
 
-        // Draw label
-        ctx.fillStyle = ctx.strokeStyle;
+        // Draw label background
+        ctx.fillStyle = color;
         ctx.font = 'bold 14px sans-serif';
-        const label = obj.item;
+        const binEmoji = obj.is_trash ? '🗑️' : '👀';
+        const label = `${binEmoji} ${obj.item}`;
         const textMetrics = ctx.measureText(label);
-        const padding = 4;
+        const padding = 6;
+        const labelHeight = 22;
 
-        ctx.fillRect(x, y - 20, textMetrics.width + padding * 2, 20);
+        // Label position - above the box, or inside if too close to top
+        const labelY = y > labelHeight + 5 ? y - labelHeight - 2 : y + 2;
+
+        ctx.fillRect(x, labelY, textMetrics.width + padding * 2, labelHeight);
         ctx.fillStyle = 'white';
-        ctx.fillText(label, x + padding, y - 6);
+        ctx.fillText(label, x + padding, labelY + 16);
+
+        // Draw index number for multi-object
+        if (objects.length > 1) {
+          const numSize = 20;
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(x + w - numSize/2 - 2, y + numSize/2 + 2, numSize/2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'white';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(String(index + 1), x + w - numSize/2 - 2, y + numSize/2 + 6);
+          ctx.textAlign = 'left';
+        }
       });
 
       resolve(canvas.toDataURL('image/jpeg', 0.9));

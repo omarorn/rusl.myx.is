@@ -3,6 +3,7 @@ import { useCamera } from '../hooks/useCamera';
 import { identifyItem, generateCartoon, generateItemIcon, getQuizImageUrl, type IdentifyResponse, type DetectedObject } from '../services/api';
 import { AdSlot } from './AdSlot';
 import { cropImageClient, drawCropOverlay } from '../utils/imageUtils';
+import { useSettings } from '../context/SettingsContext';
 
 interface LogEntry {
   id: string;
@@ -44,6 +45,7 @@ interface ScannerProps {
 
 export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, onOpenTrip, onRecyclingItem }: ScannerProps) {
   const { videoRef, canvasRef, isStreaming, error, startCamera, stopCamera, captureImage } = useCamera();
+  const { cartoonMode: showCartoon } = useSettings(); // Use cartoon mode from settings
   const [isLoading, setIsLoading] = useState(false);
   const [pendingCount, setPendingCount] = useState(0); // Track queued images
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -56,10 +58,11 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
   const [generatedIcon, setGeneratedIcon] = useState<string | null>(null); // Cute cartoon icon
   const [isGeneratingIcon, setIsGeneratingIcon] = useState(false);
   const [showIconView, setShowIconView] = useState(true); // Toggle between icon and original image
-  const [showCartoon, setShowCartoon] = useState(true);  // Cartoon mode as default
   const [showAllObjects, setShowAllObjects] = useState(false);
   const [selectedObjectIndex, setSelectedObjectIndex] = useState(0);
   const [lightboxEntry, setLightboxEntry] = useState<HistoryEntry | null>(null); // For viewing history items
+  const [imageHistory, setImageHistory] = useState<string[]>([]); // Stack for undo functionality
+  const [showBoundingBoxView, setShowBoundingBoxView] = useState(false); // Fullscreen bounding box view
   const logEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-capture with motion detection
@@ -229,6 +232,97 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
       }
     };
   }, [autoCapture, isStreaming, motionDetected, countdown, pendingCount, videoRef]);
+
+  // Undo function to restore previous image
+  const handleUndo = useCallback(() => {
+    if (imageHistory.length === 0) return;
+
+    const previousImage = imageHistory[imageHistory.length - 1];
+    setImageHistory(prev => prev.slice(0, -1));
+    setCurrentImage(previousImage);
+    setOverlayImage(null);
+    addLog('Afturkallað', '↩️', 'info');
+  }, [imageHistory]);
+
+  // Handle object crop with undo support
+  const handleObjectCrop = useCallback(async (index: number) => {
+    if (!currentResult?.allObjects || !currentImage) return;
+
+    const obj = currentResult.allObjects[index];
+    if (!obj.crop_box) return;
+
+    setSelectedObjectIndex(index);
+
+    // Update overlay to highlight selected object
+    const overlay = await drawCropOverlay(currentImage, currentResult.allObjects, index);
+    setOverlayImage(overlay);
+
+    addLog(`Klippi að: ${obj.item}`, '✂️', 'info');
+    try {
+      // Save current image to history before cropping
+      setImageHistory(prev => [...prev.slice(-4), currentImage]); // Keep last 5 states
+
+      const cropped = await cropImageClient(currentImage, obj.crop_box);
+      setCurrentImage(cropped);
+      setOverlayImage(null);
+    } catch (err) {
+      console.error('Crop failed:', err);
+      addLog('Klipping mistókst', '❌', 'error');
+    }
+  }, [currentResult?.allObjects, currentImage]);
+
+  // Global keyboard shortcuts (Ctrl+Z for undo)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Z or Cmd+Z for undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        if (imageHistory.length > 0) {
+          handleUndo();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [imageHistory.length, handleUndo]);
+
+  // Keyboard navigation for object selection
+  useEffect(() => {
+    if (!showAllObjects || !currentResult?.allObjects) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const objects = currentResult.allObjects;
+      if (!objects || objects.length === 0) return;
+
+      switch (e.key) {
+        case 'ArrowUp':
+        case 'ArrowLeft':
+          e.preventDefault();
+          setSelectedObjectIndex(prev => Math.max(0, prev - 1));
+          break;
+        case 'ArrowDown':
+        case 'ArrowRight':
+          e.preventDefault();
+          setSelectedObjectIndex(prev => Math.min(objects.length - 1, prev + 1));
+          break;
+        case 'Enter':
+          e.preventDefault();
+          const selectedObj = objects[selectedObjectIndex];
+          if (selectedObj?.crop_box && currentImage) {
+            handleObjectCrop(selectedObjectIndex);
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          setShowAllObjects(false);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showAllObjects, currentResult?.allObjects, selectedObjectIndex, currentImage, handleObjectCrop]);
 
   // Countdown timer
   const [triggerCapture, setTriggerCapture] = useState(false);
@@ -622,14 +716,14 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
                     <span className="text-xs">Teikna...</span>
                   </div>
                 ) : generatedIcon && showIconView ? (
-                  /* Show generated cute icon */
+                  /* Show generated cute icon with pop animation */
                   <img
                     src={generatedIcon}
                     alt={currentResult.item}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover transition-all duration-300 ease-out animate-popIn"
                   />
                 ) : currentImage ? (
-                  /* Show original/cartoon image */
+                  /* Show original/cartoon image with fade animation */
                   <img
                     src={
                       showCartoon && cartoonImage
@@ -639,7 +733,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
                           : currentImage
                     }
                     alt=""
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover transition-all duration-300 ease-out animate-fadeIn"
                     style={getCartoonStyle()}
                   />
                 ) : (
@@ -712,36 +806,47 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
             {/* Multi-object detection for wide shots */}
             {currentResult.isWideShot && currentResult.allObjects && currentResult.allObjects.length > 1 && (
               <div className="mb-2">
-                <button
-                  onClick={() => setShowAllObjects(!showAllObjects)}
-                  className="w-full py-1 bg-white/10 hover:bg-white/20 rounded text-sm"
-                >
-                  {showAllObjects ? '▲' : '▼'} {currentResult.allObjects.length} hlutir greindir
-                </button>
+                <div className="flex gap-2 mb-1">
+                  <button
+                    onClick={() => setShowAllObjects(!showAllObjects)}
+                    className="flex-1 py-1 bg-white/10 hover:bg-white/20 rounded text-sm"
+                  >
+                    {showAllObjects ? '▲' : '▼'} {currentResult.allObjects.length} hlutir greindir
+                  </button>
+                  {/* Fullscreen bounding box view */}
+                  {overlayImage && (
+                    <button
+                      onClick={() => setShowBoundingBoxView(true)}
+                      className="px-3 py-1 bg-blue-500/30 hover:bg-blue-500/50 rounded text-sm font-medium"
+                      title="Sýna stækkaða mynd með öllum hlutum"
+                    >
+                      🔍 Stækka
+                    </button>
+                  )}
+                  {/* Undo button - only show when there's history */}
+                  {imageHistory.length > 0 && (
+                    <button
+                      onClick={handleUndo}
+                      className="px-3 py-1 bg-yellow-500/30 hover:bg-yellow-500/50 rounded text-sm font-medium"
+                      title="Afturkalla klippingu (Ctrl+Z)"
+                    >
+                      ↩️ Afturkalla
+                    </button>
+                  )}
+                </div>
                 {showAllObjects && (
                   <div className="mt-2 space-y-1">
+                    <div className="text-xs text-white/50 mb-2 flex items-center gap-2">
+                      <span>⌨️ Örvar til að velja</span>
+                      <span>•</span>
+                      <span>Enter til að klippa</span>
+                      <span>•</span>
+                      <span>Esc til að loka</span>
+                    </div>
                     {currentResult.allObjects.map((obj, i) => (
                       <button
                         key={i}
-                        onClick={async () => {
-                          setSelectedObjectIndex(i);
-                          // Update overlay to highlight selected object
-                          if (currentImage && currentResult.allObjects) {
-                            const overlay = await drawCropOverlay(currentImage, currentResult.allObjects, i);
-                            setOverlayImage(overlay);
-                          }
-                          // If object has crop_box, crop to it
-                          if (obj.crop_box && currentImage) {
-                            addLog(`Klippi að: ${obj.item}`, '✂️', 'info');
-                            try {
-                              const cropped = await cropImageClient(currentImage, obj.crop_box);
-                              setCurrentImage(cropped);
-                              setOverlayImage(null);
-                            } catch (err) {
-                              console.error('Crop failed:', err);
-                            }
-                          }
-                        }}
+                        onClick={() => handleObjectCrop(i)}
                         className={`w-full p-2 rounded text-sm text-left transition-colors ${
                           i === selectedObjectIndex
                             ? 'bg-white/20 ring-2 ring-white/50'
@@ -759,7 +864,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
                           <p className="text-xs opacity-70 mt-1 italic">"{obj.funny_comment}"</p>
                         )}
                         {obj.crop_box && (
-                          <p className="text-xs opacity-50 mt-1">📐 Smelltu til að klippa</p>
+                          <p className="text-xs opacity-50 mt-1">📐 {i === selectedObjectIndex ? 'Ýttu á Enter' : 'Smelltu'} til að klippa</p>
                         )}
                       </button>
                     ))}
@@ -877,6 +982,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
                         <img
                           src={imageUrl}
                           alt={entry.item}
+                          loading="lazy"
                           className="w-full h-16 object-cover"
                           style={showCartoon ? { filter: 'contrast(1.3) saturate(1.4) brightness(1.1)' } : {}}
                         />
@@ -939,6 +1045,62 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
             <div className="text-sm opacity-80">{lightboxEntry.bin}</div>
             <div className="text-xs opacity-60 mt-1">
               {lightboxEntry.timestamp.toLocaleString('is-IS')}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen bounding box view for wide shots */}
+      {showBoundingBoxView && currentResult?.isWideShot && overlayImage && (
+        <div
+          className="fixed inset-0 bg-black/95 z-50 flex flex-col"
+          onClick={() => setShowBoundingBoxView(false)}
+        >
+          {/* Header */}
+          <div className="safe-top bg-gray-800/80 p-3 flex items-center justify-between">
+            <h2 className="text-white font-bold">🔍 {currentResult.allObjects?.length || 0} hlutir greindir</h2>
+            <button
+              onClick={() => setShowBoundingBoxView(false)}
+              className="text-white text-2xl hover:text-gray-300 px-2"
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Image with bounding boxes */}
+          <div className="flex-1 flex items-center justify-center p-4 overflow-auto" onClick={e => e.stopPropagation()}>
+            <img
+              src={overlayImage}
+              alt="Greind mynd"
+              className="max-w-full max-h-full object-contain rounded-xl"
+            />
+          </div>
+
+          {/* Object list at bottom */}
+          <div className="bg-gray-800/90 p-3 max-h-48 overflow-auto">
+            <div className="text-xs text-white/50 mb-2">Smelltu á hlut til að velja og klippa:</div>
+            <div className="flex flex-wrap gap-2">
+              {currentResult.allObjects?.map((obj, i) => (
+                <button
+                  key={i}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleObjectCrop(i);
+                    setShowBoundingBoxView(false);
+                  }}
+                  className={`px-3 py-2 rounded-lg text-sm transition-all ${
+                    i === selectedObjectIndex
+                      ? 'bg-green-500 text-white ring-2 ring-white/50'
+                      : obj.is_trash
+                        ? 'bg-yellow-500/80 text-white hover:bg-yellow-500'
+                        : 'bg-gray-600 text-white/70 hover:bg-gray-500'
+                  }`}
+                >
+                  <span className="mr-1">{obj.is_trash ? '🗑️' : '👀'}</span>
+                  {obj.item}
+                  {obj.crop_box && <span className="ml-1 text-xs opacity-70">✂️</span>}
+                </button>
+              ))}
             </div>
           </div>
         </div>

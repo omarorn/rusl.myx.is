@@ -9,7 +9,7 @@ interface SettingsProps {
 const TIMER_OPTIONS = [3, 5, 10, 15, 30];
 
 export function Settings({ onClose, onOpenAdmin }: SettingsProps) {
-  const { language, region, quizTimer, setLanguage, setRegion, setQuizTimer } = useSettings();
+  const { language, region, quizTimer, cartoonMode, setLanguage, setRegion, setQuizTimer, setCartoonMode } = useSettings();
 
   const regions: { id: Region; name: string }[] = [
     { id: 'sorpa', name: language === 'is' ? REGIONS_INFO.sorpa.name_is : REGIONS_INFO.sorpa.name_en },
@@ -117,6 +117,36 @@ export function Settings({ onClose, onOpenAdmin }: SettingsProps) {
             {language === 'is'
               ? 'Hversu lengi hefur þú til að svara hverri spurningu í quiz'
               : 'How long you have to answer each quiz question'}
+          </p>
+        </div>
+
+        {/* Cartoon Mode Toggle */}
+        <div className="bg-white rounded-2xl p-4 shadow-md mb-4">
+          <h2 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+            🎨 {language === 'is' ? 'Teiknimyndastíll' : 'Cartoon Mode'}
+          </h2>
+          <button
+            onClick={() => setCartoonMode(!cartoonMode)}
+            className={`w-full p-4 rounded-xl font-medium transition-all flex items-center justify-between ${
+              cartoonMode
+                ? 'bg-pink-500 text-white shadow-lg'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              {cartoonMode ? '🌟' : '📷'}
+              {language === 'is'
+                ? (cartoonMode ? 'Kveikt' : 'Slökkt')
+                : (cartoonMode ? 'On' : 'Off')}
+            </span>
+            <div className={`w-12 h-6 rounded-full transition-all ${cartoonMode ? 'bg-pink-300' : 'bg-gray-300'} relative`}>
+              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${cartoonMode ? 'right-1' : 'left-1'}`} />
+            </div>
+          </button>
+          <p className="text-sm text-gray-500 mt-3">
+            {language === 'is'
+              ? 'Sýna skemmtilegar teiknimyndir af hlutum með hreyfingum'
+              : 'Show fun cartoon illustrations of items with animations'}
           </p>
         </div>
 

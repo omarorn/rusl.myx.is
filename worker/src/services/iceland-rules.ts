@@ -138,14 +138,27 @@ export function getAllBinInfoForRegion(
 export { REGIONS, DEFAULT_REGION, getRegionByMunicipality };
 export type { RegionInfo };
 
+// Short keywords that need word boundary matching to avoid false positives
+// e.g., "pla" should NOT match "plastic" or "display"
+const WORD_BOUNDARY_KEYWORDS = ['pla', 'abs', 'petg', 'foam', 'iron'];
+
 // Check if item text contains any override keywords
 export function checkOverrides(itemText: string | undefined | null): BinType | null {
   if (!itemText) return null;
   const lowerText = itemText.toLowerCase();
 
   for (const [keyword, bin] of Object.entries(ICELAND_OVERRIDES)) {
-    if (lowerText.includes(keyword)) {
-      return bin;
+    // Use word boundary for short keywords to avoid false positives
+    if (WORD_BOUNDARY_KEYWORDS.includes(keyword)) {
+      const wordBoundaryRegex = new RegExp(`\\b${keyword}\\b`, 'i');
+      if (wordBoundaryRegex.test(lowerText)) {
+        return bin;
+      }
+    } else {
+      // Standard substring match for longer/specific keywords
+      if (lowerText.includes(keyword)) {
+        return bin;
+      }
     }
   }
 

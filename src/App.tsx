@@ -1,12 +1,27 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Scanner } from './components/Scanner';
-import { Stats } from './components/Stats';
-import { Quiz } from './components/Quiz';
-import { LiveMode } from './components/LiveMode';
 import { WelcomeIntro } from './components/WelcomeIntro';
-import { Settings } from './components/Settings';
-import { Admin } from './components/Admin';
-import { TripScreen } from './components/TripScreen';
+import { OfflineIndicator } from './components/OfflineIndicator';
+
+// Lazy load components that aren't immediately needed
+const Stats = lazy(() => import('./components/Stats').then(m => ({ default: m.Stats })));
+const Quiz = lazy(() => import('./components/Quiz').then(m => ({ default: m.Quiz })));
+const LiveMode = lazy(() => import('./components/LiveMode').then(m => ({ default: m.LiveMode })));
+const Settings = lazy(() => import('./components/Settings').then(m => ({ default: m.Settings })));
+const Admin = lazy(() => import('./components/Admin').then(m => ({ default: m.Admin })));
+const TripScreen = lazy(() => import('./components/TripScreen').then(m => ({ default: m.TripScreen })));
+
+// Loading fallback component
+function LoadingFallback() {
+  return (
+    <div className="h-full flex items-center justify-center bg-gray-900">
+      <div className="text-center">
+        <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-white/70">Hleð...</p>
+      </div>
+    </div>
+  );
+}
 
 type View = 'intro' | 'scanner' | 'stats' | 'quiz' | 'live' | 'settings' | 'admin' | 'trip';
 
@@ -103,16 +118,29 @@ export default function App() {
           }}
         />
       )}
-      {view === 'stats' && <Stats onClose={() => navigateTo('scanner')} />}
-      {view === 'quiz' && <Quiz onClose={() => navigateTo('scanner')} />}
-      {view === 'live' && <LiveMode onClose={() => navigateTo('scanner')} />}
-      {view === 'settings' && <Settings onClose={() => navigateTo('scanner')} onOpenAdmin={() => navigateTo('admin')} />}
-      {view === 'admin' && <Admin onClose={() => navigateTo('scanner')} />}
-      {view === 'trip' && (
-        <TripScreen
-          onScanItem={() => navigateTo('scanner')}
-          onClose={() => navigateTo('scanner')}
-          lastScannedItem={lastRecyclingItem || undefined}
+
+      {/* Lazy-loaded components wrapped in Suspense */}
+      <Suspense fallback={<LoadingFallback />}>
+        {view === 'stats' && <Stats onClose={() => navigateTo('scanner')} />}
+        {view === 'quiz' && <Quiz onClose={() => navigateTo('scanner')} />}
+        {view === 'live' && <LiveMode onClose={() => navigateTo('scanner')} />}
+        {view === 'settings' && <Settings onClose={() => navigateTo('scanner')} onOpenAdmin={() => navigateTo('admin')} />}
+        {view === 'admin' && <Admin onClose={() => navigateTo('scanner')} />}
+        {view === 'trip' && (
+          <TripScreen
+            onScanItem={() => navigateTo('scanner')}
+            onClose={() => navigateTo('scanner')}
+            lastScannedItem={lastRecyclingItem || undefined}
+          />
+        )}
+      </Suspense>
+
+      {/* Offline indicator - shown on all views except intro */}
+      {view !== 'intro' && (
+        <OfflineIndicator
+          onSyncComplete={(synced, failed) => {
+            console.log(`Synced ${synced} scans, ${failed} failed`);
+          }}
         />
       )}
     </div>

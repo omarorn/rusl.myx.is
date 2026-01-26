@@ -52,17 +52,55 @@ Verkefnalisti fyrir Íslensku ruslaflokkunarkerfið.
 - [x] Icelandic Morphology MCP þjónn stilltur
 - [x] CLAUDE.md uppfært með málfræðikafla
 
+### Unit Tests (v1.3.1) ✅
+- [x] Vitest uppsett með Node environment
+- [x] 28 unit tests fyrir iceland-rules.ts
+- [x] Próf fyrir bin mapping, overrides, og Ísland-sértækar reglur
+- [x] Lagaður villa í checkOverrides (word boundary fyrir pla, abs, petg)
+- [x] Próf keyra með `npm test` eða `npm run test:watch`
+
+### Cartoon Mode Animation (v1.3.2) ✅
+- [x] CSS keyframe animations (fadeIn, popIn, slideUp)
+- [x] Cartoon mode toggle í Settings
+- [x] cartoonMode vistuð í localStorage
+- [x] Smooth transitions á myndum í Scanner
+
+### Object Selection (v1.3.2) ✅
+- [x] Keyboard navigation (örvar til að velja, Enter til að klippa)
+- [x] Undo functionality (Ctrl+Z og ↩️ hnappur)
+- [x] Image history stack (geymir síðustu 5 stöður)
+- [x] Escape til að loka lista
+- [x] Keyboard hint texti í UI
+
+### Bounding Boxes (v1.3.2) ✅
+- [x] Fullscreen bounding box view með öllum hlutum
+- [x] Bin-based color coding (blátt=pappír, grænt=plast, o.s.frv.)
+- [x] Index numbers fyrir multi-object scenes
+- [x] Improved label styling með emojis
+- [x] Click-to-select í fullscreen view
+- [x] 🔍 Stækka hnappur til að opna fullscreen view
+
+### Offline Support (v1.3.2) ✅
+- [x] IndexedDB-based offline queue fyrir skannirnar
+- [x] Workbox runtime caching strategies
+- [x] OfflineIndicator component sem sýnir stöðu
+- [x] Auto-sync þegar nettenging kemur aftur
+- [x] Cache-first fyrir quiz myndir
+- [x] Network-first fyrir stats og leaderboard
+
+### Performance Optimization (v1.3.2) ✅
+- [x] Code splitting með React.lazy() - 20% minni initial bundle
+- [x] Lazy loading fyrir Quiz, Stats, Settings, Admin, TripScreen, LiveMode
+- [x] Suspense með loading fallback
+- [x] Image lazy loading í history section
+- [x] Main bundle: 251KB → 202KB
+
 ## 🟡 Næst (Up Next)
 
-### UX Endurbætur
-- [ ] Sýna öll hlutir í breiðri mynd með merkingum (bounding boxes)
-- [ ] Leyfa að velja hlut til að flokka úr lista
-- [ ] Betri animation þegar cartoon mode er valið
-
-### Tæknileg vinna
-- [ ] Bæta við prófum (unit tests)
-- [ ] Performance optimization
-- [ ] Offline stuðningur
+### Framtíðar hugmyndir
+- [ ] Leaderboard með vikulegum/mánaðarlegum töflum
+- [ ] Share function til að deila niðurstöðum
+- [ ] Haptic feedback á iOS/Android
 
 ## 📋 GitHub Issues
 
