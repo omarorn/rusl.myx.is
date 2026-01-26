@@ -12,6 +12,7 @@ import admin from './routes/admin';
 import image from './routes/image';
 import stations from './routes/stations';
 import trips from './routes/trips';
+import funfacts from './routes/funfacts';
 import { runPostProcessingReview } from './services/review';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -65,6 +66,10 @@ app.get('/api', (c) => {
       'POST /api/trips/:id/items',
       'PUT /api/trips/:id/complete',
       'DELETE /api/trips/:id/items/:itemId',
+      'GET /api/funfacts',
+      'GET /api/funfacts/history',
+      'POST /api/funfacts/mark-seen',
+      'GET /api/funfacts/random',
     ],
   });
 });
@@ -81,6 +86,7 @@ app.route('/api/admin', admin);
 app.route('/api/image', image);
 app.route('/api/stations', stations);
 app.route('/api/trips', trips);
+app.route('/api/funfacts', funfacts);
 
 // 404 handler for API routes only
 app.notFound((c) => {

@@ -7,8 +7,9 @@ import { WelcomeIntro } from './components/WelcomeIntro';
 import { Settings } from './components/Settings';
 import { Admin } from './components/Admin';
 import { TripScreen } from './components/TripScreen';
+import { FunFacts } from './components/FunFacts';
 
-type View = 'intro' | 'scanner' | 'stats' | 'quiz' | 'live' | 'settings' | 'admin' | 'trip';
+type View = 'intro' | 'scanner' | 'stats' | 'quiz' | 'live' | 'settings' | 'admin' | 'trip' | 'funfacts';
 
 // Map hash routes to views
 const ROUTES: Record<string, View> = {
@@ -19,6 +20,7 @@ const ROUTES: Record<string, View> = {
   '#/settings': 'settings',
   '#/admin': 'admin',
   '#/trip': 'trip',
+  '#/funfacts': 'funfacts',
   '#/': 'scanner',
   '': 'scanner',
 };
@@ -73,6 +75,7 @@ export default function App() {
       settings: '#/settings',
       admin: '#/admin',
       trip: '#/trip',
+      funfacts: '#/funfacts',
     };
     window.location.hash = hashMap[newView];
     setView(newView);
@@ -97,6 +100,7 @@ export default function App() {
           onOpenStats={() => navigateTo('stats')}
           onOpenSettings={() => navigateTo('settings')}
           onOpenTrip={() => navigateTo('trip')}
+          onOpenFunFacts={() => navigateTo('funfacts')}
           onRecyclingItem={(item) => {
             // Save item for trip - no auto-navigation
             setLastRecyclingItem(item);
@@ -115,6 +119,7 @@ export default function App() {
           lastScannedItem={lastRecyclingItem || undefined}
         />
       )}
+      {view === 'funfacts' && <FunFacts onClose={() => navigateTo('scanner')} />}
     </div>
   );
 }

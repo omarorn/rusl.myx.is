@@ -606,3 +606,61 @@ export async function removeTripItem(tripId: string, itemId: string): Promise<{ 
   });
   return res.json();
 }
+
+// Fun Facts API
+
+export interface FunFact {
+  id: number;
+  fact_is: string;
+  category: string;
+  image_key: string | null;
+  seen?: boolean;
+  seen_at?: number;
+}
+
+export interface FunFactsResponse {
+  success: boolean;
+  facts: FunFact[];
+  seen: FunFact[];
+  unseen: FunFact[];
+  total: number;
+  seenCount: number;
+  unseenCount: number;
+}
+
+export interface FunFactHistoryResponse {
+  success: boolean;
+  history: Array<{
+    id: string;
+    seen_at: number;
+    fun_fact_id: number;
+    fact_is: string;
+    category: string;
+    image_key: string | null;
+  }>;
+  count: number;
+}
+
+export async function getAllFunFacts(userHash: string): Promise<FunFactsResponse> {
+  const res = await fetch(`${API_BASE}/api/funfacts?userHash=${encodeURIComponent(userHash)}`);
+  return res.json();
+}
+
+export async function getFunFactHistory(userHash: string): Promise<FunFactHistoryResponse> {
+  const res = await fetch(`${API_BASE}/api/funfacts/history?userHash=${encodeURIComponent(userHash)}`);
+  return res.json();
+}
+
+export async function markFunFactSeen(userHash: string, funFactId: number): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_BASE}/api/funfacts/mark-seen`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userHash, funFactId }),
+  });
+  return res.json();
+}
+
+export async function getRandomFunFact(userHash: string): Promise<{ success: boolean; fact: FunFact; seen: boolean }> {
+  const res = await fetch(`${API_BASE}/api/funfacts/random?userHash=${encodeURIComponent(userHash)}`);
+  return res.json();
+}

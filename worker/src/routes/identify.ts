@@ -95,12 +95,27 @@ async function updateUserStats(
   };
 }
 
-async function getRandomFunFact(db: D1Database): Promise<string | null> {
+async function getRandomFunFact(db: D1Database, userHash: string): Promise<{ fact_is: string; id: number } | null> {
+  // Try to get an unseen fun fact first
+  const unseenResult = await db.prepare(`
+    SELECT ff.id, ff.fact_is
+    FROM fun_facts ff
+    LEFT JOIN user_fun_facts uf ON ff.id = uf.fun_fact_id AND uf.user_hash = ?
+    WHERE uf.id IS NULL
+    ORDER BY RANDOM()
+    LIMIT 1
+  `).bind(userHash).first<{ id: number; fact_is: string }>();
+
+  if (unseenResult) {
+    return unseenResult;
+  }
+
+  // All facts have been seen - return any random fact
   const result = await db.prepare(
-    'SELECT fact_is FROM fun_facts ORDER BY RANDOM() LIMIT 1'
-  ).first<{ fact_is: string }>();
-  
-  return result?.fact_is || null;
+    'SELECT id, fact_is FROM fun_facts ORDER BY RANDOM() LIMIT 1'
+  ).first<{ id: number; fact_is: string }>();
+
+  return result || null;
 }
 
 async function logScan(
@@ -273,8 +288,29 @@ identify.post('/', async (c) => {
     // Update user stats
     const stats = await updateUserStats(env.DB, userHash, points);
 
-    // Get fun fact
-    const funFact = await getRandomFunFact(env.DB);
+    // Get fun fact (prioritize unseen)
+    const funFactResult = await getRandomFunFact(env.DB, userHash);
+    const funFact = funFactResult?.fact_is || null;
+
+    // Mark fun fact as seen if we got one
+    if (funFactResult) {
+      try {
+        // Check if already seen
+        const existing = await env.DB.prepare(
+          'SELECT id FROM user_fun_facts WHERE user_hash = ? AND fun_fact_id = ?'
+        ).bind(userHash, funFactResult.id).first();
+
+        if (!existing) {
+          // Insert new record
+          await env.DB.prepare(
+            'INSERT INTO user_fun_facts (user_hash, fun_fact_id, seen_at) VALUES (?, ?, unixepoch())'
+          ).bind(userHash, funFactResult.id).run();
+        }
+      } catch (err) {
+        console.error('Failed to mark fun fact as seen:', err);
+        // Don't fail the whole request if this fails
+      }
+    }
 
     // Save image for quiz if confidence is good (> 0.7) and item was identified
     // Also generates and saves a cartoon icon version
