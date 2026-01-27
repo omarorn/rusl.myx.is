@@ -10,6 +10,7 @@ const LiveMode = lazy(() => import('./components/LiveMode').then(m => ({ default
 const Settings = lazy(() => import('./components/Settings').then(m => ({ default: m.Settings })));
 const Admin = lazy(() => import('./components/Admin').then(m => ({ default: m.Admin })));
 const TripScreen = lazy(() => import('./components/TripScreen').then(m => ({ default: m.TripScreen })));
+const FunFacts = lazy(() => import('./components/FunFacts').then(m => ({ default: m.FunFacts })));
 
 // Loading fallback component
 function LoadingFallback() {
@@ -23,7 +24,7 @@ function LoadingFallback() {
   );
 }
 
-type View = 'intro' | 'scanner' | 'stats' | 'quiz' | 'live' | 'settings' | 'admin' | 'trip';
+type View = 'intro' | 'scanner' | 'stats' | 'quiz' | 'live' | 'settings' | 'admin' | 'trip' | 'funfacts';
 
 // Map hash routes to views
 const ROUTES: Record<string, View> = {
@@ -34,6 +35,7 @@ const ROUTES: Record<string, View> = {
   '#/settings': 'settings',
   '#/admin': 'admin',
   '#/trip': 'trip',
+  '#/funfacts': 'funfacts',
   '#/': 'scanner',
   '': 'scanner',
 };
@@ -88,6 +90,7 @@ export default function App() {
       settings: '#/settings',
       admin: '#/admin',
       trip: '#/trip',
+      funfacts: '#/funfacts',
     };
     window.location.hash = hashMap[newView];
     setView(newView);
@@ -112,6 +115,7 @@ export default function App() {
           onOpenStats={() => navigateTo('stats')}
           onOpenSettings={() => navigateTo('settings')}
           onOpenTrip={() => navigateTo('trip')}
+          onOpenFunFacts={() => navigateTo('funfacts')}
           onRecyclingItem={(item) => {
             // Save item for trip - no auto-navigation
             setLastRecyclingItem(item);
@@ -133,6 +137,7 @@ export default function App() {
             lastScannedItem={lastRecyclingItem || undefined}
           />
         )}
+        {view === 'funfacts' && <FunFacts onClose={() => navigateTo('scanner')} />}
       </Suspense>
 
       {/* Offline indicator - shown on all views except intro */}

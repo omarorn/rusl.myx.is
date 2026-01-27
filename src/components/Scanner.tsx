@@ -40,10 +40,11 @@ interface ScannerProps {
   onOpenStats: () => void;
   onOpenSettings: () => void;
   onOpenTrip?: () => void;
+  onOpenFunFacts?: () => void;
   onRecyclingItem?: (item: { item: string; bin: string; confidence: number }) => void;
 }
 
-export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, onOpenTrip, onRecyclingItem }: ScannerProps) {
+export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, onOpenTrip, onOpenFunFacts, onRecyclingItem }: ScannerProps) {
   const { videoRef, canvasRef, isStreaming, error, startCamera, stopCamera, captureImage } = useCamera();
   const { cartoonMode: showCartoon } = useSettings(); // Use cartoon mode from settings
   const [isLoading, setIsLoading] = useState(false);
@@ -540,6 +541,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
         <div className="flex gap-2">
           <button onClick={onOpenLive} className="text-xl p-1" title="Talandi lýsing">🔊</button>
           <button onClick={onOpenQuiz} className="text-xl p-1" title="Leikur">🎮</button>
+          {onOpenFunFacts && <button onClick={onOpenFunFacts} className="text-xl p-1" title="Fróðleikur">💡</button>}
           <button onClick={onOpenStats} className="text-xl p-1" title="Tölfræði">📊</button>
           {onOpenTrip && <button onClick={onOpenTrip} className="text-xl p-1" title="Ferð">🚗</button>}
           <button onClick={onOpenSettings} className="text-xl p-1" title="Stillingar">⚙️</button>
