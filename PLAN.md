@@ -104,14 +104,17 @@
 ## 🔄 Í Vinnslu / Næst
 
 ### UX Endurbætur
-- [ ] Sýna öll hlutir í breiðri mynd með merkingum (bounding boxes)
-- [ ] Leyfa að velja hlut til að flokka úr lista
-- [ ] Betri animation þegar cartoon mode er valið
+- [x] Sýna öll hlutir í breiðri mynd með merkingum (bounding boxes) ✅
+- [x] Leyfa að velja hlut til að flokka úr lista ✅
+- [x] Betri animation þegar cartoon mode er valið ✅
+- [ ] Leaderboard með vikulegum/mánaðarlegum töflum
+- [ ] Share function til að deila niðurstöðum
+- [ ] Haptic feedback á iOS/Android
 
 ### Tæknileg vinna
-- [ ] Bæta við prófum (unit tests)
-- [ ] Performance optimization
-- [ ] Offline stuðningur (full offline mode)
+- [x] Bæta við prófum (unit tests) ✅
+- [x] Performance optimization ✅
+- [x] Offline stuðningur (full offline mode) ✅
 
 ### Deploy ✅
 - [x] Custom domain `trash.myx.is` virkt
@@ -339,4 +342,8 @@ wrangler secret put ADMIN_PASSWORD
 
 ---
 
-**Staða:** 🟢 Production Ready - v1.3.0 deployed on both domains
+**Staða:** 🟢 Production Ready - v1.3.2 deployed on both domains
+
+---
+
+Síðast uppfært: 27. janúar 2026

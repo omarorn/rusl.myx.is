@@ -31,19 +31,51 @@ stats.get('/', async (c) => {
 });
 
 // GET /api/stats/leaderboard
+// Query params:
+// - period: 'all' (default), 'week' (7 days), 'month' (30 days)
+// - sveitarfelag: municipality filter (optional)
+// - limit: max results (default 10, max 50)
 stats.get('/leaderboard', async (c) => {
   const sveitarfelag = c.req.query('sveitarfelag') || 'reykjavik';
   const limit = Math.min(parseInt(c.req.query('limit') || '10', 10), 50);
-  
+  const period = c.req.query('period') || 'all';
+
+  // All-time leaderboard: use pre-calculated totals from users table
+  if (period === 'all') {
+    const result = await c.env.DB.prepare(`
+      SELECT user_hash, total_scans, total_points, best_streak
+      FROM users
+      ORDER BY total_points DESC
+      LIMIT ?
+    `).bind(limit).all();
+
+    return c.json({
+      sveitarfelag,
+      period,
+      leaderboard: result.results || [],
+    });
+  }
+
+  // Period-based leaderboard: calculate from scans table
+  // Points formula: 10 base + 5 bonus if confidence >= 0.9
+  const daysAgo = period === 'week' ? 7 : 30;
+
   const result = await c.env.DB.prepare(`
-    SELECT user_hash, total_scans, total_points, best_streak
-    FROM users
+    SELECT
+      user_hash,
+      COUNT(*) as total_scans,
+      SUM(CASE WHEN confidence >= 0.9 THEN 15 ELSE 10 END) as total_points,
+      0 as best_streak
+    FROM scans
+    WHERE created_at > unixepoch('now', '-' || ? || ' days')
+    GROUP BY user_hash
     ORDER BY total_points DESC
     LIMIT ?
-  `).bind(limit).all();
-  
+  `).bind(daysAgo, limit).all();
+
   return c.json({
     sveitarfelag,
+    period,
     leaderboard: result.results || [],
   });
 });

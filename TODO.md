@@ -95,12 +95,17 @@ Verkefnalisti fyrir Íslensku ruslaflokkunarkerfið.
 - [x] Image lazy loading í history section
 - [x] Main bundle: 251KB → 202KB
 
+### v1.4.0 Features ✅
+- [x] Leaderboard með vikulegum/mánaðarlegum töflum (period selector)
+- [x] Share function til að deila niðurstöðum (Web Share API)
+- [x] Haptic feedback á iOS/Android (Vibration API)
+- [x] Gemini 2.5 Flash TTS fyrir talgervi
+
 ## 🟡 Næst (Up Next)
 
 ### Framtíðar hugmyndir
-- [ ] Leaderboard með vikulegum/mánaðarlegum töflum
-- [ ] Share function til að deila niðurstöðum
-- [ ] Haptic feedback á iOS/Android
+- [ ] Multi-language TTS rödd val
+- [ ] Push notifications fyrir dagleg áminning
 
 ## 📋 GitHub Issues
 
@@ -130,4 +135,4 @@ npx wrangler d1 execute trash-myx-db --local --command "SELECT * FROM quiz_image
 
 ---
 
-Síðast uppfært: 2026-01-22
+Síðast uppfært: 2026-01-27

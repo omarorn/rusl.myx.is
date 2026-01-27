@@ -4,6 +4,7 @@ import { identifyItem, generateCartoon, generateItemIcon, getQuizImageUrl, type 
 import { AdSlot } from './AdSlot';
 import { cropImageClient, drawCropOverlay } from '../utils/imageUtils';
 import { useSettings } from '../context/SettingsContext';
+import { haptic } from '../utils/haptics';
 
 interface LogEntry {
   id: string;
@@ -406,6 +407,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
         }
 
         addLog(`#${captureNum}: ${response.item} → ${response.binInfo?.name_is}`, response.binInfo?.icon || '✅', 'success');
+        haptic.success(); // Haptic feedback on successful classification
 
         // Always update current result to show latest
         setCurrentImage(image);
@@ -676,7 +678,10 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
               </button>
               {/* Capture button - allows rapid-fire */}
               <button
-                onClick={() => handleCapture()}
+                onClick={() => {
+                  haptic.medium();
+                  handleCapture();
+                }}
                 disabled={!isStreaming}
                 className="absolute bottom-3 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full bg-white border-4 border-green-500
                          flex items-center justify-center shadow-lg disabled:opacity-50 active:scale-95 transition-transform"
@@ -875,17 +880,49 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
               </div>
             )}
 
-            {/* Feedback button */}
-            <button
-              onClick={() => {
-                const feedback = `Hlutur: ${currentResult.item}\nTunna: ${currentResult.binInfo?.name_is}\nÁstæða: ${currentResult.reason}`;
-                const mailtoUrl = `mailto:rusl@myx.is?subject=Rangt flokkað&body=${encodeURIComponent(feedback)}`;
-                window.open(mailtoUrl, '_blank');
-              }}
-              className="w-full py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
-            >
-              🤔 Ég held þetta sé rangt
-            </button>
+            {/* Action buttons */}
+            <div className="flex gap-2">
+              {/* Share button */}
+              <button
+                onClick={async () => {
+                  const shareText = `Ég flokkaði ${currentResult.item} í ${currentResult.binInfo?.name_is} tunnuna!`;
+                  if (navigator.share) {
+                    try {
+                      await navigator.share({
+                        title: 'Ruslaflokkun',
+                        text: shareText,
+                        url: 'https://rusl.myx.is'
+                      });
+                    } catch (err) {
+                      // User cancelled or error - ignore
+                    }
+                  } else {
+                    // Fallback: copy to clipboard
+                    try {
+                      await navigator.clipboard.writeText(`${shareText} https://rusl.myx.is`);
+                      addLog('Afritað á klippiborð!', '📋', 'success');
+                    } catch (err) {
+                      addLog('Gat ekki afritað', '❌', 'error');
+                    }
+                  }
+                }}
+                className="flex-1 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
+              >
+                📤 Deila
+              </button>
+
+              {/* Feedback button */}
+              <button
+                onClick={() => {
+                  const feedback = `Hlutur: ${currentResult.item}\nTunna: ${currentResult.binInfo?.name_is}\nÁstæða: ${currentResult.reason}`;
+                  const mailtoUrl = `mailto:rusl@myx.is?subject=Rangt flokkað&body=${encodeURIComponent(feedback)}`;
+                  window.open(mailtoUrl, '_blank');
+                }}
+                className="flex-1 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
+              >
+                🤔 Rangt?
+              </button>
+            </div>
           </div>
         )}
 

@@ -13,6 +13,7 @@ import {
   type QuizScore,
 } from '../services/api';
 import { useSettings } from '../context/SettingsContext';
+import { haptic } from '../utils/haptics';
 
 type GameMode = 'menu' | 'timed' | 'survival' | 'learning';
 type GameState = 'playing' | 'feedback' | 'gameover' | 'leaderboard';
@@ -70,6 +71,7 @@ export function Quiz({ onClose }: QuizProps) {
 
   // Start game
   const startGame = useCallback((selectedMode: GameMode) => {
+    haptic.light(); // Haptic feedback on game start
     setMode(selectedMode);
     setScore(0);
     setTotalQuestions(0);
@@ -91,9 +93,11 @@ export function Quiz({ onClose }: QuizProps) {
       setTotalQuestions(prev => prev + 1);
 
       if (result.correct) {
+        haptic.success(); // Haptic feedback on correct answer
         setScore(prev => prev + result.points + (streak * 2)); // Bonus for streaks
         setStreak(prev => prev + 1);
       } else {
+        haptic.error(); // Haptic feedback on wrong answer
         setStreak(0);
         if (mode === 'survival') {
           setLives(prev => prev - 1);
@@ -511,6 +515,35 @@ export function Quiz({ onClose }: QuizProps) {
               </div>
             </div>
           )}
+
+          {/* Share button */}
+          <button
+            onClick={async () => {
+              const shareText = `Ég fékk ${score} stig í Ruslaleik!`;
+              if (navigator.share) {
+                try {
+                  await navigator.share({
+                    title: 'Ruslaleikur',
+                    text: shareText,
+                    url: 'https://rusl.myx.is'
+                  });
+                } catch (err) {
+                  // User cancelled or error - ignore
+                }
+              } else {
+                // Fallback: copy to clipboard
+                try {
+                  await navigator.clipboard.writeText(`${shareText} https://rusl.myx.is`);
+                  alert('Afritað á klippiborð!');
+                } catch (err) {
+                  alert('Gat ekki afritað');
+                }
+              }
+            }}
+            className="w-full bg-green-600 text-white p-4 rounded-xl font-bold active:scale-95 transition-transform mb-4"
+          >
+            📤 Deila niðurstöðu
+          </button>
 
           <div className="flex gap-4">
             <button

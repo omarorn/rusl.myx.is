@@ -153,6 +153,27 @@ export async function getStats(): Promise<UserStats> {
   return response.json();
 }
 
+// Leaderboard types
+export type LeaderboardPeriod = 'all' | 'week' | 'month';
+
+export interface LeaderboardEntry {
+  user_hash: string;
+  total_scans: number;
+  total_points: number;
+  best_streak: number;
+}
+
+export interface LeaderboardResponse {
+  sveitarfelag: string;
+  period: LeaderboardPeriod;
+  leaderboard: LeaderboardEntry[];
+}
+
+export async function getLeaderboard(period: LeaderboardPeriod = 'all', limit: number = 10): Promise<LeaderboardResponse> {
+  const response = await fetch(`${API_BASE}/api/stats/leaderboard?period=${period}&limit=${limit}`);
+  return response.json();
+}
+
 // Generate cartoon icon from an image
 export async function generateItemIcon(
   imageBase64: string,

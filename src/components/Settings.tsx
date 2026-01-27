@@ -1,5 +1,6 @@
 import { useSettings, REGIONS_INFO, type Region, type Language } from '../context/SettingsContext';
 import { t } from '../locales/translations';
+import { haptic } from '../utils/haptics';
 
 interface SettingsProps {
   onClose: () => void;
@@ -41,7 +42,10 @@ export function Settings({ onClose, onOpenAdmin }: SettingsProps) {
           </h2>
           <div className="grid grid-cols-2 gap-2">
             <button
-              onClick={() => setLanguage('is')}
+              onClick={() => {
+                haptic.light();
+                setLanguage('is');
+              }}
               className={`p-4 rounded-xl font-medium transition-all ${
                 language === 'is'
                   ? 'bg-blue-600 text-white shadow-lg scale-105'
@@ -52,7 +56,10 @@ export function Settings({ onClose, onOpenAdmin }: SettingsProps) {
               <div>Íslenska</div>
             </button>
             <button
-              onClick={() => setLanguage('en')}
+              onClick={() => {
+                haptic.light();
+                setLanguage('en');
+              }}
               className={`p-4 rounded-xl font-medium transition-all ${
                 language === 'en'
                   ? 'bg-blue-600 text-white shadow-lg scale-105'
@@ -74,7 +81,10 @@ export function Settings({ onClose, onOpenAdmin }: SettingsProps) {
             {regions.map((r) => (
               <button
                 key={r.id}
-                onClick={() => setRegion(r.id)}
+                onClick={() => {
+                  haptic.light();
+                  setRegion(r.id);
+                }}
                 className={`w-full p-4 rounded-xl font-medium text-left transition-all flex items-center justify-between ${
                   region === r.id
                     ? 'bg-green-600 text-white shadow-lg'
@@ -102,7 +112,10 @@ export function Settings({ onClose, onOpenAdmin }: SettingsProps) {
             {TIMER_OPTIONS.map((seconds) => (
               <button
                 key={seconds}
-                onClick={() => setQuizTimer(seconds)}
+                onClick={() => {
+                  haptic.light();
+                  setQuizTimer(seconds);
+                }}
                 className={`px-4 py-2 rounded-xl font-medium transition-all ${
                   quizTimer === seconds
                     ? 'bg-purple-600 text-white shadow-lg'
@@ -126,7 +139,10 @@ export function Settings({ onClose, onOpenAdmin }: SettingsProps) {
             🎨 {language === 'is' ? 'Teiknimyndastíll' : 'Cartoon Mode'}
           </h2>
           <button
-            onClick={() => setCartoonMode(!cartoonMode)}
+            onClick={() => {
+              haptic.light();
+              setCartoonMode(!cartoonMode);
+            }}
             className={`w-full p-4 rounded-xl font-medium transition-all flex items-center justify-between ${
               cartoonMode
                 ? 'bg-pink-500 text-white shadow-lg'
