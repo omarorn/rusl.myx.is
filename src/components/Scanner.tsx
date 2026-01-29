@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCamera } from '../hooks/useCamera';
-import { identifyItem, generateCartoon, generateItemIcon, getQuizImageUrl, type IdentifyResponse, type DetectedObject } from '../services/api';
+import { flagForReview, identifyItem, generateCartoon, generateItemIcon, getQuizImageUrl, type IdentifyResponse, type DetectedObject } from '../services/api';
 import { AdSlot } from './AdSlot';
 import { cropImageClient, drawCropOverlay } from '../utils/imageUtils';
 import { useSettings } from '../context/SettingsContext';
@@ -913,10 +913,27 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
 
               {/* Feedback button */}
               <button
-                onClick={() => {
-                  const feedback = `Hlutur: ${currentResult.item}\nTunna: ${currentResult.binInfo?.name_is}\nÁstæða: ${currentResult.reason}`;
-                  const mailtoUrl = `mailto:rusl@myx.is?subject=Rangt flokkað&body=${encodeURIComponent(feedback)}`;
-                  window.open(mailtoUrl, '_blank');
+                onClick={async () => {
+                  try {
+                    const userHash = localStorage.getItem('trash_user_hash') || 'unknown';
+                    const res = await flagForReview({
+                      userHash,
+                      item: currentResult.item,
+                      bin: currentResult.bin,
+                      reason: currentResult.reason,
+                      confidence: currentResult.confidence,
+                      imageKey: currentResult.imageKey || null,
+                    });
+
+                    if (res?.success) {
+                      addLog('Flaggað fyrir yfirferð ✅', '📝', 'success');
+                    } else {
+                      addLog('Gat ekki flaggað (reyndu aftur)', '⚠️', 'error');
+                    }
+                  } catch (err) {
+                    console.error('Failed to flag for review:', err);
+                    addLog('Gat ekki flaggað (villa)', '⚠️', 'error');
+                  }
                 }}
                 className="flex-1 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
               >

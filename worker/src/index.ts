@@ -46,6 +46,7 @@ app.get('/api', (c) => {
       'POST /api/describe',
       'GET /api/review',
       'GET /api/review/changes',
+      'POST /api/review/flag',
       'POST /api/review/trigger',
       'GET /api/ads',
       'POST /api/ads/click',
