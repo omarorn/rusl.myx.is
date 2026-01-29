@@ -577,6 +577,7 @@ export interface JokeOfTheDay {
   joke: string;
   basedOn: string[];
   generatedAt: string;
+  backgroundUrl?: string;
 }
 
 export async function getJokeOfTheDay(): Promise<JokeOfTheDay> {

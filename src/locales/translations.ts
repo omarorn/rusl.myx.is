@@ -2,7 +2,7 @@ export type Language = 'is' | 'en';
 
 export const translations = {
   // App
-  'app.title': { is: 'Ruslaflokkun', en: 'Waste Sorting' },
+  'app.title': { is: 'Trasshy', en: 'Trasshy' },
   'app.subtitle': { is: 'Skannaðu rusl og lærðu rétta flokkun', en: 'Scan waste and learn proper sorting' },
 
   // Welcome Intro

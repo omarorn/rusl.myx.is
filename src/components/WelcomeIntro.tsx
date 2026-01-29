@@ -50,7 +50,7 @@ export function WelcomeIntro({ onComplete }: WelcomeIntroProps) {
         {step === 0 && (
           <div className="text-center animate-fade-in">
             <div className="text-6xl mb-4">♻️</div>
-            <h1 className="text-3xl font-bold mb-2">Ruslaflokkun</h1>
+            <h1 className="text-3xl font-bold mb-2">Trasshy</h1>
             <p className="text-lg opacity-90 mb-6">
               Skannaðu rusl og lærðu rétta flokkun
             </p>

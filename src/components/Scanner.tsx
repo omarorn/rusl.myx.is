@@ -539,7 +539,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
 
       {/* Header */}
       <header className="safe-top bg-green-600 text-white p-3 flex items-center justify-between shadow-lg relative z-40">
-        <h1 className="text-lg font-bold">♻️ Ruslaflokkun</h1>
+        <h1 className="text-lg font-bold">♻️ Trasshy</h1>
         <div className="flex gap-2">
           <button onClick={onOpenLive} className="text-xl p-1" title="Talandi lýsing">🔊</button>
           <button onClick={onOpenQuiz} className="text-xl p-1" title="Leikur">🎮</button>

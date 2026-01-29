@@ -116,7 +116,19 @@ export function DesktopWrapper({ children }: DesktopWrapperProps) {
           </div>
 
           {/* Joke of the Day */}
-          <div className="mb-8 bg-yellow-500/20 rounded-xl p-4 border border-yellow-400/30">
+          <div
+            className="mb-8 rounded-xl border border-yellow-400/30 overflow-hidden"
+            style={
+              joke?.backgroundUrl
+                ? {
+                    backgroundImage: `url(${joke.backgroundUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }
+                : undefined
+            }
+          >
+            <div className={joke?.backgroundUrl ? 'bg-black/55 p-4' : 'bg-yellow-500/20 p-4'}>
             <h3 className="font-bold text-yellow-300 mb-2 flex items-center gap-2">
               😂 {t('desktop.joke_title')}
             </h3>
@@ -125,6 +137,7 @@ export function DesktopWrapper({ children }: DesktopWrapperProps) {
             ) : joke ? (
               <p className="text-white">{joke.joke}</p>
             ) : null}
+            </div>
           </div>
 
           {/* Sponsors */}
