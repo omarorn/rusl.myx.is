@@ -113,6 +113,12 @@ export function DesktopWrapper({ children }: DesktopWrapperProps) {
             >
               📊 {t('desktop.stats')}
             </a>
+            <a
+              href="#/funfacts"
+              className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-6 py-3 rounded-xl font-bold transition-colors"
+            >
+              💡 Fróðleikur
+            </a>
           </div>
 
           {/* Joke of the Day */}

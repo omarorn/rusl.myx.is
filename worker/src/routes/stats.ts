@@ -139,12 +139,44 @@ stats.get('/joke', async (c) => {
   const CACHE_KEY = 'joke_of_the_day';
   const CACHE_TTL = 24 * 60 * 60; // 24 hours in seconds
 
+  const attachLatestBackgroundIfMissing = async (jokeData: JokeResponse): Promise<JokeResponse> => {
+    if (jokeData.backgroundUrl) return jokeData;
+
+    try {
+      const listed = await c.env.IMAGES.list({ prefix: 'jokes/background_' });
+      const objects = listed.objects || [];
+      if (objects.length === 0) return jokeData;
+
+      // Keys contain a millisecond timestamp; lexicographically max is newest.
+      const newest = objects
+        .map((o) => o.key)
+        .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0))[0];
+
+      if (!newest) return jokeData;
+
+      return {
+        ...jokeData,
+        backgroundUrl: `/api/quiz/image/${newest}`,
+      };
+    } catch (err) {
+      console.error('[JokeOfDay] Failed to attach cached background:', err);
+      return jokeData;
+    }
+  };
+
   // Try to get cached joke
   const cached = await c.env.CACHE.get(CACHE_KEY);
   if (cached) {
     try {
       const jokeData = JSON.parse(cached) as JokeResponse;
-      return c.json(jokeData);
+      const enriched = await attachLatestBackgroundIfMissing(jokeData);
+
+      // Refresh cache if we added backgroundUrl so clients see it immediately.
+      if (enriched.backgroundUrl && !jokeData.backgroundUrl) {
+        await c.env.CACHE.put(CACHE_KEY, JSON.stringify(enriched), { expirationTtl: CACHE_TTL });
+      }
+
+      return c.json(enriched);
     } catch {
       // Invalid cache, regenerate
     }
