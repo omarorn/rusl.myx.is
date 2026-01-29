@@ -143,14 +143,29 @@ stats.get('/joke', async (c) => {
     if (jokeData.backgroundUrl) return jokeData;
 
     try {
-      const listed = await c.env.IMAGES.list({ prefix: 'jokes/background_' });
-      const objects = listed.objects || [];
-      if (objects.length === 0) return jokeData;
+      const prefixes = ['jokes/', 'quiz/jokes/'];
+      const keys: string[] = [];
 
-      // Keys contain a millisecond timestamp; lexicographically max is newest.
-      const newest = objects
-        .map((o) => o.key)
-        .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0))[0];
+      for (const prefix of prefixes) {
+        // eslint-disable-next-line no-await-in-loop
+        const listed = await c.env.IMAGES.list({ prefix });
+        for (const obj of listed.objects || []) {
+          if (!obj?.key) continue;
+          if (/^(quiz\/)?jokes\/background_\d+\.(png|jpg|jpeg|webp)$/i.test(obj.key)) {
+            keys.push(obj.key);
+          }
+        }
+      }
+
+      if (keys.length === 0) return jokeData;
+
+      // Choose newest by timestamp inside the filename.
+      const newest = keys
+        .map((k) => {
+          const match = k.match(/background_(\d+)\./);
+          return { k, ts: match ? Number(match[1]) : 0 };
+        })
+        .sort((a, b) => b.ts - a.ts)[0]?.k;
 
       if (!newest) return jokeData;
 
