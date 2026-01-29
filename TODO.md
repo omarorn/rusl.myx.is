@@ -4,6 +4,15 @@ Verkefnalisti fyrir Íslensku ruslaflokkunarkerfið.
 
 ## 🟢 Lokið (Completed)
 
+### v1.5.x (2026-01-29) ✅
+- [x] Endurnýja Fróðleik (FunFacts) sem feed úr `quiz_images` (≈110 approved)
+- [x] Sýna ikon sjálfgefið og leyfa að skipta yfir í upprunalega mynd (smella/toggle)
+- [x] Styðja R2 lykla fyrir ikon/jokes bæði með og án `quiz/` forskeytis í `/api/quiz/image/*`
+- [x] Brandari dagsins: sýna bakgrunn á desktop landing og tryggja `backgroundUrl` í `/api/stats/joke`
+- [x] Desktop: bæta við hlekk á Fróðleik við hliðina á Tölfræði
+- [x] "Rangt?" sendir ekki email — flaggar í D1 fyrir yfirferð (`POST /api/review/flag`)
+- [x] Endurnefna app titil/haus: "Ruslaflokkun" → "Trasshy"
+
 ### Admin Panel (`/admin`) ✅
 - [x] Búa til `/admin` síðu til að samþykkja myndir fyrir leikinn
 - [x] Sýna allar ósamþykktar myndir í lista
@@ -103,6 +112,11 @@ Verkefnalisti fyrir Íslensku ruslaflokkunarkerfið.
 
 ## 🟡 Næst (Up Next)
 
+### Yfirferð & gæði
+- [ ] Admin UI: skoða/afgreiða `review_flags` (listi + status: new/triaged/resolved)
+- [ ] Auka ikon coverage: keyra batch "generate missing icons" þar til nær 100%
+- [ ] Rannsaka "Óþekkt hlutur"/unknown-item í skönnun (betri fallback + logging)
+
 ### Framtíðar hugmyndir
 - [ ] Multi-language TTS rödd val
 - [ ] Push notifications fyrir dagleg áminning
@@ -135,4 +149,4 @@ npx wrangler d1 execute trash-myx-db --local --command "SELECT * FROM quiz_image
 
 ---
 
-Síðast uppfært: 2026-01-27
+Síðast uppfært: 2026-01-29

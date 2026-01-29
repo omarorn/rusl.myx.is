@@ -2,15 +2,18 @@
 
 This file provides guidance to Claude Code and AI agents when working with this repository.
 
-**Project:** rusl.myx.is — Íslensk ruslaflokkun með gervigreind
+**Project:** Trasshy (rusl.myx.is / trash.myx.is) — Íslensk ruslaflokkun með gervigreind
 **Owner:** 2076 ehf (omar@2076.is)
 **Repository:** github.com/omarorn/rusl.myx.is
-**Version:** 1.3.0
+**Version:** 1.5.x (work in progress)
 **Philosophy:** Design invisible systems that make daily life effortless
 
 **Domains:**
 - `rusl.myx.is` — Icelandic default (íslenska)
 - `trash.myx.is` — English default
+
+**Branding:**
+- App title/header is now **"Trasshy"** (previously "Ruslaflokkun").
 
 ---
 
@@ -27,6 +30,26 @@ An Icelandic waste classification system with two products:
 - **IoT:** Raspberry Pi + Python + TFLite (future)
 
 ---
+
+## ✅ Recent Behavior Changes (2026-01-29)
+
+### FunFacts (Fróðleikur)
+- FunFacts are now derived from real scan-backed entries in D1 table `quiz_images` (approved=1).
+- Icons are stored in R2 under keys like `quiz/icons/<name>_<bin>_<timestamp>.png`.
+- The UI shows the icon by default (when available) and reveals the original image via toggle.
+- Backend provides an enriched endpoint `GET /api/funfacts/detail/:id` (best-effort) to extract optional joke metadata from R2 custom metadata.
+
+### "Rangt?" feedback
+- The "Rangt?" button MUST NOT open email.
+- It flags for review via `POST /api/review/flag` and stores a row in D1 table `review_flags`.
+
+### Joke of the Day
+- `GET /api/stats/joke` returns a `backgroundUrl` pointing at `/api/quiz/image/jokes/background_<ts>.png`.
+- If AI generation fails, we still attach a known existing background to keep desktop visuals consistent.
+
+### Image serving conventions
+- `/api/quiz/image/*` is tolerant to both percent-encoded and decoded keys.
+- It also tries common prefix variants (e.g. toggling `quiz/` for `icons/` and `jokes/`).
 
 ## 📁 Repository Structure
 
@@ -95,6 +118,17 @@ npx wrangler d1 execute trash-myx-db --remote --command "SELECT COUNT(*) FROM us
 # Apply migrations
 npx wrangler d1 migrations apply trash-myx-db --local
 npx wrangler d1 migrations apply trash-myx-db --remote
+```
+
+### Quick API smoke tests
+```bash
+# Joke of day should include backgroundUrl
+curl https://trash.myx.is/api/stats/joke
+
+# Flag a wrong result (no email)
+curl -X POST https://trash.myx.is/api/review/flag \
+  -H "Content-Type: application/json" \
+  -d '{"userHash":"debug","item":"test","bin":"mixed","imageKey":"quiz/test.jpg"}'
 ```
 
 ### Testing (Backend)
