@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAllFunFacts, getFunFactHistory, getQuizImageUrl, type FunFact } from '../services/api';
+import { getAllFunFacts, getQuizImageUrl, markFunFactSeen, type FunFact } from '../services/api';
 
 interface FunFactsProps {
   onClose: () => void;
@@ -46,19 +46,29 @@ export function FunFacts({ onClose }: FunFactsProps) {
     }
   };
 
-  const getCategoryIcon = (category: string) => {
-    const icons: Record<string, string> = {
-      plastic: '🧴',
-      metal: '🥫',
-      '3d_print': '🖨️',
-      glass: '🫙',
-      paper: '📄',
-      food: '🍎',
-      general: '♻️',
-      deposit: '💰',
-      recycling_center: '🏭',
+  const getBinBadge = (bin: string) => {
+    const bins: Record<string, { label: string; icon: string; color: string }> = {
+      paper: { label: 'Pappír', icon: '📦', color: 'bg-blue-500' },
+      plastic: { label: 'Plast/Málmur', icon: '🥤', color: 'bg-green-500' },
+      food: { label: 'Matur', icon: '🍎', color: 'bg-amber-600' },
+      mixed: { label: 'Blandað', icon: '🗑️', color: 'bg-gray-500' },
+      recycling_center: { label: 'Endurvinnslustöð', icon: '♻️', color: 'bg-purple-500' },
+      deposit: { label: 'Skilagjald', icon: '💰', color: 'bg-pink-600' },
     };
-    return icons[category] || '💡';
+    return bins[bin] || { label: bin, icon: '💡', color: 'bg-gray-600' };
+  };
+
+  const openFact = async (fact: FunFact) => {
+    setSelectedFact(fact);
+    if (!fact.seen) {
+      // Mark as seen (best-effort)
+      try {
+        await markFunFactSeen(userHash, fact.id);
+        await loadFunFacts();
+      } catch {
+        // ignore
+      }
+    }
   };
 
   const getCurrentList = () => {
@@ -153,49 +163,52 @@ export function FunFacts({ onClose }: FunFactsProps) {
             {currentList.map((fact) => (
               <div
                 key={fact.id}
-                onClick={() => setSelectedFact(fact)}
+                onClick={() => openFact(fact)}
                 className={`bg-gray-800 rounded-lg overflow-hidden cursor-pointer transition-all hover:ring-2 hover:ring-purple-500 ${
                   fact.seen ? 'opacity-70' : ''
                 }`}
               >
-                {/* Image if available */}
-                {fact.image_key && (
-                  <div className="relative h-40 bg-gray-700">
+                {/* Images (original + icon if available) */}
+                <div className={`relative bg-gray-700 ${fact.icon_key ? 'flex' : ''}`}>
+                  <div className={`${fact.icon_key ? 'w-1/2' : 'w-full'} h-40`}>
                     <img
                       src={getQuizImageUrl(fact.image_key)}
-                      alt=""
+                      alt={fact.item}
                       className="w-full h-full object-cover"
-                      onError={(e) => {
-                        // Hide image if it fails to load
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
                     />
-                    {fact.seen && (
-                      <div className="absolute top-2 right-2 bg-green-500/80 text-white text-xs px-2 py-1 rounded">
-                        ✓ Lesið
-                      </div>
-                    )}
                   </div>
-                )}
+                  {fact.icon_key && (
+                    <div className="w-1/2 h-40 bg-white">
+                      <img
+                        src={getQuizImageUrl(fact.icon_key)}
+                        alt={`${fact.item} ikon`}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  )}
+
+                  {fact.seen && (
+                    <div className="absolute top-2 right-2 bg-green-500/80 text-white text-xs px-2 py-1 rounded">
+                      ✓ Lesið
+                    </div>
+                  )}
+                </div>
 
                 {/* Content */}
                 <div className="p-3">
-                  <div className="flex items-start gap-2">
-                    <span className="text-2xl flex-shrink-0">
-                      {getCategoryIcon(fact.category)}
-                    </span>
+                  <div className="flex items-start gap-3">
                     <div className="flex-1">
-                      <p className="text-white text-sm leading-relaxed">
-                        {fact.fact_is}
-                      </p>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-white text-sm font-semibold truncate">{fact.item}</p>
+                        <span className="text-xs text-gray-400">{Math.round(fact.confidence * 100)}%</span>
+                      </div>
+                      <p className="text-gray-200 text-sm leading-relaxed mt-1">{fact.reason}</p>
                       <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
-                        <span className="bg-gray-700 px-2 py-1 rounded">
-                          {fact.category}
+                        <span className={`px-2 py-1 rounded text-white ${getBinBadge(fact.bin).color}`}>
+                          {getBinBadge(fact.bin).icon} {getBinBadge(fact.bin).label}
                         </span>
                         {fact.seen && fact.seen_at && (
-                          <span>
-                            {new Date(fact.seen_at * 1000).toLocaleDateString('is-IS')}
-                          </span>
+                          <span>{new Date(fact.seen_at * 1000).toLocaleDateString('is-IS')}</span>
                         )}
                       </div>
                     </div>
@@ -226,36 +239,41 @@ export function FunFacts({ onClose }: FunFactsProps) {
             className="max-w-lg w-full bg-gray-800 rounded-xl overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
-            {/* Image if available */}
-            {selectedFact.image_key && (
-              <div className="relative h-64 bg-gray-700">
+            {/* Original + icon (like Admin) */}
+            <div className={`bg-gray-700 ${selectedFact.icon_key ? 'flex' : ''}`}>
+              <div className={`${selectedFact.icon_key ? 'w-1/2' : 'w-full'} h-64`}>
                 <img
                   src={getQuizImageUrl(selectedFact.image_key)}
-                  alt=""
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
+                  alt={selectedFact.item}
+                  className="w-full h-full object-contain"
                 />
               </div>
-            )}
+              {selectedFact.icon_key && (
+                <div className="w-1/2 h-64 bg-white">
+                  <img
+                    src={getQuizImageUrl(selectedFact.icon_key)}
+                    alt={`${selectedFact.item} ikon`}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              )}
+            </div>
 
             {/* Content */}
             <div className="p-6">
               <div className="flex items-start gap-3 mb-4">
-                <span className="text-4xl">
-                  {getCategoryIcon(selectedFact.category)}
-                </span>
                 <div className="flex-1">
-                  <p className="text-white text-lg leading-relaxed">
-                    {selectedFact.fact_is}
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-white text-lg font-bold leading-relaxed">{selectedFact.item}</p>
+                    <span className="text-sm text-gray-300">{Math.round(selectedFact.confidence * 100)}%</span>
+                  </div>
+                  <p className="text-gray-200 text-base leading-relaxed mt-2">{selectedFact.reason}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 text-sm">
-                <span className="bg-purple-600 text-white px-3 py-1 rounded">
-                  {selectedFact.category}
+                <span className={`text-white px-3 py-1 rounded ${getBinBadge(selectedFact.bin).color}`}>
+                  {getBinBadge(selectedFact.bin).icon} {getBinBadge(selectedFact.bin).label}
                 </span>
                 {selectedFact.seen && (
                   <span className="bg-green-600 text-white px-3 py-1 rounded">

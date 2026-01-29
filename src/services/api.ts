@@ -689,10 +689,14 @@ export async function removeTripItem(tripId: string, itemId: string): Promise<{ 
 // Fun Facts API
 
 export interface FunFact {
-  id: number;
-  fact_is: string;
-  category: string;
-  image_key: string | null;
+  id: string;
+  item: string;
+  bin: string;
+  reason: string;
+  confidence: number;
+  image_key: string;
+  icon_key: string | null;
+  created_at: number;
   seen?: boolean;
   seen_at?: number;
 }
@@ -712,10 +716,14 @@ export interface FunFactHistoryResponse {
   history: Array<{
     id: string;
     seen_at: number;
-    fun_fact_id: number;
-    fact_is: string;
-    category: string;
-    image_key: string | null;
+    quiz_image_id: string;
+    item: string;
+    bin: string;
+    reason: string;
+    confidence: number;
+    image_key: string;
+    icon_key: string | null;
+    created_at: number;
   }>;
   count: number;
 }
@@ -730,11 +738,11 @@ export async function getFunFactHistory(userHash: string): Promise<FunFactHistor
   return res.json();
 }
 
-export async function markFunFactSeen(userHash: string, funFactId: number): Promise<{ success: boolean }> {
+export async function markFunFactSeen(userHash: string, quizImageId: string): Promise<{ success: boolean }> {
   const res = await fetch(`${API_BASE}/api/funfacts/mark-seen`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userHash, funFactId }),
+    body: JSON.stringify({ userHash, quizImageId }),
   });
   return res.json();
 }

@@ -3,26 +3,23 @@ import type { Env } from '../types';
 
 const funfacts = new Hono<{ Bindings: Env }>();
 
-interface FunFact {
-  id: number;
-  fact_is: string;
-  category: string;
-  image_key: string | null;
-}
-
-interface UserFunFact {
+interface QuizFact {
   id: string;
-  user_hash: string;
-  fun_fact_id: number;
-  seen_at: number;
+  item: string;
+  bin: string;
+  reason: string;
+  confidence: number;
+  image_key: string;
+  icon_key: string | null;
+  created_at: number;
 }
 
-interface FunFactWithStatus extends FunFact {
+interface QuizFactWithStatus extends QuizFact {
   seen: boolean;
   seen_at?: number;
 }
 
-// GET /api/funfacts - Get all fun facts with user's viewing status
+// GET /api/funfacts - Get all quiz-backed "fun facts" with user's viewing status
 funfacts.get('/', async (c) => {
   const env = c.env;
   const userHash = c.req.query('userHash');
@@ -32,25 +29,26 @@ funfacts.get('/', async (c) => {
   }
 
   try {
-    // Get all fun facts
-    const factsResult = await env.DB.prepare(
-      'SELECT id, fact_is, category, image_key FROM fun_facts ORDER BY id'
-    ).all<FunFact>();
+    // Get all approved quiz images (these are created from real scans)
+    const factsResult = await env.DB.prepare(`
+      SELECT id, item, bin, reason, confidence, image_key, icon_key, created_at
+      FROM quiz_images
+      WHERE approved = 1
+      ORDER BY created_at DESC
+    `).all<QuizFact>();
 
-    if (!factsResult.results) {
-      return c.json({ error: 'Gat ekki sótt fróðleik' }, 500);
-    }
+    const facts = factsResult.results || [];
 
-    // Get user's viewing history
+    // Get user's viewing history (quiz-backed)
     const historyResult = await env.DB.prepare(
-      'SELECT fun_fact_id, seen_at FROM user_fun_facts WHERE user_hash = ? ORDER BY seen_at DESC'
-    ).bind(userHash).all<{ fun_fact_id: number; seen_at: number }>();
+      'SELECT quiz_image_id, seen_at FROM user_quiz_facts WHERE user_hash = ? ORDER BY seen_at DESC'
+    ).bind(userHash).all<{ quiz_image_id: string; seen_at: number }>();
 
     const history = historyResult.results || [];
-    const seenMap = new Map(history.map(h => [h.fun_fact_id, h.seen_at]));
+    const seenMap = new Map(history.map(h => [h.quiz_image_id, h.seen_at]));
 
-    // Combine facts with viewing status
-    const factsWithStatus: FunFactWithStatus[] = factsResult.results.map(fact => ({
+    // Combine with viewing status
+    const factsWithStatus: QuizFactWithStatus[] = facts.map(fact => ({
       ...fact,
       seen: seenMap.has(fact.id),
       seen_at: seenMap.get(fact.id),
@@ -75,7 +73,7 @@ funfacts.get('/', async (c) => {
   }
 });
 
-// GET /api/funfacts/history - Get user's viewing history
+// GET /api/funfacts/history - Get user's viewing history (quiz-backed)
 funfacts.get('/history', async (c) => {
   const env = c.env;
   const userHash = c.req.query('userHash');
@@ -85,20 +83,23 @@ funfacts.get('/history', async (c) => {
   }
 
   try {
-    // Get user's viewing history with full fact details
     const result = await env.DB.prepare(`
       SELECT
-        uf.id,
-        uf.seen_at,
-        ff.id as fun_fact_id,
-        ff.fact_is,
-        ff.category,
-        ff.image_key
-      FROM user_fun_facts uf
-      JOIN fun_facts ff ON uf.fun_fact_id = ff.id
-      WHERE uf.user_hash = ?
-      ORDER BY uf.seen_at DESC
-      LIMIT 100
+        uqf.id,
+        uqf.seen_at,
+        qi.id as quiz_image_id,
+        qi.item,
+        qi.bin,
+        qi.reason,
+        qi.confidence,
+        qi.image_key,
+        qi.icon_key,
+        qi.created_at
+      FROM user_quiz_facts uqf
+      JOIN quiz_images qi ON uqf.quiz_image_id = qi.id
+      WHERE uqf.user_hash = ? AND qi.approved = 1
+      ORDER BY uqf.seen_at DESC
+      LIMIT 200
     `).bind(userHash).all();
 
     return c.json({
@@ -112,37 +113,37 @@ funfacts.get('/history', async (c) => {
   }
 });
 
-// POST /api/funfacts/mark-seen - Mark a fun fact as seen
+// POST /api/funfacts/mark-seen - Mark a quiz-backed fact as seen
 funfacts.post('/mark-seen', async (c) => {
   const env = c.env;
 
-  let body: { userHash: string; funFactId: number };
+  let body: { userHash: string; quizImageId: string };
   try {
     body = await c.req.json();
   } catch {
     return c.json({ error: 'Ógild fyrirspurn' }, 400);
   }
 
-  if (!body.userHash || !body.funFactId) {
-    return c.json({ error: 'userHash og funFactId vantar' }, 400);
+  if (!body.userHash || !body.quizImageId) {
+    return c.json({ error: 'userHash og quizImageId vantar' }, 400);
   }
 
   try {
     // Check if already marked as seen
     const existing = await env.DB.prepare(
-      'SELECT id FROM user_fun_facts WHERE user_hash = ? AND fun_fact_id = ?'
-    ).bind(body.userHash, body.funFactId).first();
+      'SELECT id FROM user_quiz_facts WHERE user_hash = ? AND quiz_image_id = ?'
+    ).bind(body.userHash, body.quizImageId).first();
 
     if (existing) {
       // Already seen - update timestamp
       await env.DB.prepare(
-        'UPDATE user_fun_facts SET seen_at = unixepoch() WHERE user_hash = ? AND fun_fact_id = ?'
-      ).bind(body.userHash, body.funFactId).run();
+        'UPDATE user_quiz_facts SET seen_at = unixepoch() WHERE user_hash = ? AND quiz_image_id = ?'
+      ).bind(body.userHash, body.quizImageId).run();
     } else {
       // Insert new record
       await env.DB.prepare(
-        'INSERT INTO user_fun_facts (user_hash, fun_fact_id, seen_at) VALUES (?, ?, unixepoch())'
-      ).bind(body.userHash, body.funFactId).run();
+        'INSERT INTO user_quiz_facts (user_hash, quiz_image_id, seen_at) VALUES (?, ?, unixepoch())'
+      ).bind(body.userHash, body.quizImageId).run();
     }
 
     return c.json({ success: true });
@@ -152,7 +153,7 @@ funfacts.post('/mark-seen', async (c) => {
   }
 });
 
-// GET /api/funfacts/random - Get a random unseen fun fact (or any if all seen)
+// GET /api/funfacts/random - Get a random unseen quiz-backed fact (or any if all seen)
 funfacts.get('/random', async (c) => {
   const env = c.env;
   const userHash = c.req.query('userHash');
@@ -164,13 +165,13 @@ funfacts.get('/random', async (c) => {
   try {
     // Try to get an unseen fun fact
     const unseenResult = await env.DB.prepare(`
-      SELECT ff.id, ff.fact_is, ff.category, ff.image_key
-      FROM fun_facts ff
-      LEFT JOIN user_fun_facts uf ON ff.id = uf.fun_fact_id AND uf.user_hash = ?
-      WHERE uf.id IS NULL
+      SELECT qi.id, qi.item, qi.bin, qi.reason, qi.confidence, qi.image_key, qi.icon_key, qi.created_at
+      FROM quiz_images qi
+      LEFT JOIN user_quiz_facts uqf ON qi.id = uqf.quiz_image_id AND uqf.user_hash = ?
+      WHERE uqf.id IS NULL AND qi.approved = 1
       ORDER BY RANDOM()
       LIMIT 1
-    `).bind(userHash).first<FunFact>();
+    `).bind(userHash).first<QuizFact>();
 
     if (unseenResult) {
       return c.json({
@@ -181,9 +182,13 @@ funfacts.get('/random', async (c) => {
     }
 
     // All facts have been seen - return any random fact
-    const randomResult = await env.DB.prepare(
-      'SELECT id, fact_is, category, image_key FROM fun_facts ORDER BY RANDOM() LIMIT 1'
-    ).first<FunFact>();
+    const randomResult = await env.DB.prepare(`
+      SELECT id, item, bin, reason, confidence, image_key, icon_key, created_at
+      FROM quiz_images
+      WHERE approved = 1
+      ORDER BY RANDOM()
+      LIMIT 1
+    `).first<QuizFact>();
 
     if (randomResult) {
       return c.json({
