@@ -585,6 +585,22 @@ export async function getJokeOfTheDay(): Promise<JokeOfTheDay> {
   return response.json();
 }
 
+export async function flagForReview(payload: {
+  userHash: string;
+  item: string;
+  bin: string;
+  reason?: string;
+  confidence?: number;
+  imageKey?: string | null;
+}): Promise<{ success: boolean; error?: string }> {
+  const response = await fetch(`${API_BASE}/api/review/flag`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return response.json();
+}
+
 // Image generation API
 export interface CartoonResponse {
   success: boolean;

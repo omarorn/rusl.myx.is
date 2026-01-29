@@ -4,6 +4,65 @@ import { runPostProcessingReview } from '../services/review';
 
 const app = new Hono<{ Bindings: Env }>();
 
+// User flagging ("Rangt")
+app.post('/flag', async (c) => {
+  let body: {
+    userHash?: string;
+    item?: string;
+    bin?: string;
+    reason?: string;
+    confidence?: number;
+    imageKey?: string | null;
+  };
+
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Ógild fyrirspurn' }, 400);
+  }
+
+  if (!body?.userHash || !body?.item || !body?.bin) {
+    return c.json({ error: 'userHash, item og bin vantar' }, 400);
+  }
+
+  try {
+    // Keep this migration-less and safe to run repeatedly.
+    await c.env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS review_flags (
+        id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
+        created_at INTEGER DEFAULT (unixepoch()),
+        user_hash TEXT NOT NULL,
+        image_key TEXT,
+        item TEXT NOT NULL,
+        bin TEXT NOT NULL,
+        reason TEXT,
+        confidence REAL,
+        status TEXT DEFAULT 'new'
+      );
+    `).run();
+
+    await c.env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_review_flags_created_at ON review_flags(created_at);').run();
+    await c.env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_review_flags_status ON review_flags(status);').run();
+
+    await c.env.DB.prepare(`
+      INSERT INTO review_flags (user_hash, image_key, item, bin, reason, confidence)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(
+      body.userHash,
+      body.imageKey || null,
+      body.item,
+      body.bin,
+      body.reason || null,
+      typeof body.confidence === 'number' ? body.confidence : null
+    ).run();
+
+    return c.json({ success: true });
+  } catch (err) {
+    console.error('Review flag error:', err);
+    return c.json({ error: 'Villa kom upp' }, 500);
+  }
+});
+
 // Get review stats
 app.get('/', async (c) => {
   const stats = await c.env.DB.prepare(`
