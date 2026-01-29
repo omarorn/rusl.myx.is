@@ -19,6 +19,62 @@ interface QuizFactWithStatus extends QuizFact {
   seen_at?: number;
 }
 
+function extractJokeFromCustomMetadata(customMetadata: Record<string, string> | undefined): {
+  joke_key?: string;
+  joke_text?: string;
+} {
+  if (!customMetadata) return {};
+
+  const directKey =
+    customMetadata.joke_key ||
+    customMetadata.jokeKey ||
+    customMetadata.joke_background ||
+    customMetadata.jokeBackground ||
+    customMetadata.joke_image ||
+    customMetadata.jokeImage;
+
+  const directText =
+    customMetadata.joke ||
+    customMetadata.dad_joke ||
+    customMetadata.dadJoke ||
+    customMetadata.joke_text ||
+    customMetadata.jokeText;
+
+  // Fall back: scan all metadata values for anything that looks like an R2 key
+  // containing jokes/....png
+  let scannedKey: string | undefined;
+  for (const value of Object.values(customMetadata)) {
+    if (typeof value !== 'string' || !value) continue;
+    if (/^(quiz\/)?jokes\/.+\.(png|jpg|jpeg|webp)$/i.test(value.trim())) {
+      scannedKey = value.trim();
+      break;
+    }
+
+    // Sometimes metadata may be JSON-encoded
+    const trimmed = value.trim();
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      try {
+        const parsed = JSON.parse(trimmed) as unknown;
+        if (parsed && typeof parsed === 'object') {
+          const jsonString = JSON.stringify(parsed);
+          const match = jsonString.match(/(quiz\/)?jokes\/[A-Za-z0-9_\-%.\p{L}]+\.(png|jpg|jpeg|webp)/iu);
+          if (match?.[0]) {
+            scannedKey = match[0];
+            break;
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  const joke_key = (directKey || scannedKey) ?? undefined;
+  const joke_text = directText ?? undefined;
+
+  return { joke_key, joke_text };
+}
+
 // GET /api/funfacts - Get all quiz-backed "fun facts" with user's viewing status
 funfacts.get('/', async (c) => {
   const env = c.env;
@@ -58,11 +114,21 @@ funfacts.get('/', async (c) => {
     const seen = factsWithStatus.filter(f => f.seen).sort((a, b) => (b.seen_at || 0) - (a.seen_at || 0));
     const unseen = factsWithStatus.filter(f => !f.seen);
 
+    // Backward compatibility:
+    // - Old clients expect { fact_is, category, image_key }
+    // - New clients expect quiz-backed fields like { item, bin, reason, icon_key }
+    const toResponse = (f: QuizFactWithStatus) => ({
+      ...f,
+      fact_is: f.reason || f.item,
+      category: f.bin,
+      image_key: f.image_key,
+    });
+
     return c.json({
       success: true,
-      facts: factsWithStatus,
-      seen,
-      unseen,
+      facts: factsWithStatus.map(toResponse),
+      seen: seen.map(toResponse),
+      unseen: unseen.map(toResponse),
       total: factsWithStatus.length,
       seenCount: seen.length,
       unseenCount: unseen.length,
@@ -102,10 +168,18 @@ funfacts.get('/history', async (c) => {
       LIMIT 200
     `).bind(userHash).all();
 
+    const history = (result.results || []).map((row: Record<string, unknown>) => ({
+      ...row,
+      // Legacy aliases
+      fact_is: row.reason ?? row.item,
+      category: row.bin,
+      fun_fact_id: row.quiz_image_id,
+    }));
+
     return c.json({
       success: true,
-      history: result.results || [],
-      count: result.results?.length || 0,
+      history,
+      count: history.length,
     });
   } catch (err) {
     console.error('FunFacts history error:', err);
@@ -117,14 +191,15 @@ funfacts.get('/history', async (c) => {
 funfacts.post('/mark-seen', async (c) => {
   const env = c.env;
 
-  let body: { userHash: string; quizImageId: string };
+  let body: { userHash: string; quizImageId?: string; funFactId?: string };
   try {
     body = await c.req.json();
   } catch {
     return c.json({ error: 'Ógild fyrirspurn' }, 400);
   }
 
-  if (!body.userHash || !body.quizImageId) {
+  const quizImageId = body.quizImageId || body.funFactId;
+  if (!body.userHash || !quizImageId) {
     return c.json({ error: 'userHash og quizImageId vantar' }, 400);
   }
 
@@ -132,18 +207,18 @@ funfacts.post('/mark-seen', async (c) => {
     // Check if already marked as seen
     const existing = await env.DB.prepare(
       'SELECT id FROM user_quiz_facts WHERE user_hash = ? AND quiz_image_id = ?'
-    ).bind(body.userHash, body.quizImageId).first();
+    ).bind(body.userHash, quizImageId).first();
 
     if (existing) {
       // Already seen - update timestamp
       await env.DB.prepare(
         'UPDATE user_quiz_facts SET seen_at = unixepoch() WHERE user_hash = ? AND quiz_image_id = ?'
-      ).bind(body.userHash, body.quizImageId).run();
+      ).bind(body.userHash, quizImageId).run();
     } else {
       // Insert new record
       await env.DB.prepare(
         'INSERT INTO user_quiz_facts (user_hash, quiz_image_id, seen_at) VALUES (?, ?, unixepoch())'
-      ).bind(body.userHash, body.quizImageId).run();
+      ).bind(body.userHash, quizImageId).run();
     }
 
     return c.json({ success: true });
@@ -176,7 +251,13 @@ funfacts.get('/random', async (c) => {
     if (unseenResult) {
       return c.json({
         success: true,
-        fact: unseenResult,
+        fact: {
+          ...unseenResult,
+          // Legacy aliases
+          fact_is: unseenResult.reason || unseenResult.item,
+          category: unseenResult.bin,
+          image_key: unseenResult.image_key,
+        },
         seen: false,
       });
     }
@@ -193,7 +274,13 @@ funfacts.get('/random', async (c) => {
     if (randomResult) {
       return c.json({
         success: true,
-        fact: randomResult,
+        fact: {
+          ...randomResult,
+          // Legacy aliases
+          fact_is: randomResult.reason || randomResult.item,
+          category: randomResult.bin,
+          image_key: randomResult.image_key,
+        },
         seen: true,
       });
     }
@@ -201,6 +288,73 @@ funfacts.get('/random', async (c) => {
     return c.json({ error: 'Enginn fróðleikur fundinn' }, 404);
   } catch (err) {
     console.error('Random fun fact error:', err);
+    return c.json({ error: 'Villa kom upp' }, 500);
+  }
+});
+
+// GET /api/funfacts/detail/:id - Enriched detail for a single fact (includes optional joke metadata)
+funfacts.get('/detail/:id', async (c) => {
+  const env = c.env;
+  const id = c.req.param('id');
+
+  if (!id) {
+    return c.json({ error: 'id vantar' }, 400);
+  }
+
+  try {
+    const fact = await env.DB.prepare(`
+      SELECT id, item, bin, reason, confidence, image_key, icon_key, created_at
+      FROM quiz_images
+      WHERE id = ? AND approved = 1
+      LIMIT 1
+    `).bind(id).first<QuizFact>();
+
+    if (!fact) {
+      return c.json({ error: 'Fróðleikur fannst ekki' }, 404);
+    }
+
+    // Best-effort: pull custom metadata from the *original* image object.
+    // We use head() to avoid downloading the image bytes.
+    const candidateImageKeys: string[] = [];
+    const add = (k: string | null | undefined) => {
+      if (!k) return;
+      if (!candidateImageKeys.includes(k)) candidateImageKeys.push(k);
+    };
+    add(fact.image_key);
+    try {
+      const decoded = decodeURIComponent(fact.image_key);
+      if (decoded && decoded !== fact.image_key) add(decoded);
+    } catch {
+      // ignore
+    }
+    if (fact.image_key.startsWith('quiz/')) add(fact.image_key.slice('quiz/'.length));
+
+    let head: R2Object | null = null;
+    for (const key of candidateImageKeys) {
+      // eslint-disable-next-line no-await-in-loop
+      const candidate = await env.IMAGES.head(key);
+      if (candidate) {
+        head = candidate;
+        break;
+      }
+    }
+
+    const { joke_key, joke_text } = extractJokeFromCustomMetadata(head?.customMetadata);
+
+    return c.json({
+      success: true,
+      fact: {
+        ...fact,
+        joke_key: joke_key ?? null,
+        joke_text: joke_text ?? null,
+        // Legacy aliases
+        fact_is: fact.reason || fact.item,
+        category: fact.bin,
+        image_key: fact.image_key,
+      },
+    });
+  } catch (err) {
+    console.error('FunFacts detail error:', err);
     return c.json({ error: 'Villa kom upp' }, 500);
   }
 });

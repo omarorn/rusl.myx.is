@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAllFunFacts, getQuizImageUrl, markFunFactSeen, type FunFact } from '../services/api';
+import { getAllFunFacts, getFunFactDetail, getQuizImageUrl, markFunFactSeen, type FunFact } from '../services/api';
 
 interface FunFactsProps {
   onClose: () => void;
@@ -20,6 +20,7 @@ export function FunFacts({ onClose }: FunFactsProps) {
   const [seenFacts, setSeenFacts] = useState<FunFact[]>([]);
   const [unseenFacts, setUnseenFacts] = useState<FunFact[]>([]);
   const [selectedFact, setSelectedFact] = useState<FunFact | null>(null);
+  const [showOriginal, setShowOriginal] = useState(false);
   const [view, setView] = useState<'all' | 'seen' | 'unseen'>('all');
 
   useEffect(() => {
@@ -60,6 +61,18 @@ export function FunFacts({ onClose }: FunFactsProps) {
 
   const openFact = async (fact: FunFact) => {
     setSelectedFact(fact);
+    setShowOriginal(false);
+
+    // Best-effort: enrich with joke metadata (doesn't block UI)
+    try {
+      const detail = await getFunFactDetail(fact.id);
+      if (detail?.success && detail.fact) {
+        setSelectedFact((prev) => (prev && prev.id === fact.id ? { ...prev, ...detail.fact } : prev));
+      }
+    } catch {
+      // ignore
+    }
+
     if (!fact.seen) {
       // Mark as seen (best-effort)
       try {
@@ -168,24 +181,13 @@ export function FunFacts({ onClose }: FunFactsProps) {
                   fact.seen ? 'opacity-70' : ''
                 }`}
               >
-                {/* Images (original + icon if available) */}
-                <div className={`relative bg-gray-700 ${fact.icon_key ? 'flex' : ''}`}>
-                  <div className={`${fact.icon_key ? 'w-1/2' : 'w-full'} h-40`}>
-                    <img
-                      src={getQuizImageUrl(fact.image_key)}
-                      alt={fact.item}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  {fact.icon_key && (
-                    <div className="w-1/2 h-40 bg-white">
-                      <img
-                        src={getQuizImageUrl(fact.icon_key)}
-                        alt={`${fact.item} ikon`}
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                  )}
+                {/* Image: prefer icon; show original only in modal */}
+                <div className="relative bg-gray-700 h-40">
+                  <img
+                    src={getQuizImageUrl(fact.icon_key || fact.image_key)}
+                    alt={fact.item}
+                    className={`w-full h-full ${fact.icon_key ? 'object-contain bg-white' : 'object-cover'}`}
+                  />
 
                   {fact.seen && (
                     <div className="absolute top-2 right-2 bg-green-500/80 text-white text-xs px-2 py-1 rounded">
@@ -239,25 +241,52 @@ export function FunFacts({ onClose }: FunFactsProps) {
             className="max-w-lg w-full bg-gray-800 rounded-xl overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
-            {/* Original + icon (like Admin) */}
-            <div className={`bg-gray-700 ${selectedFact.icon_key ? 'flex' : ''}`}>
-              <div className={`${selectedFact.icon_key ? 'w-1/2' : 'w-full'} h-64`}>
+            {/* Icon by default; tap button to reveal original */}
+            <div className="bg-gray-700">
+              <div className={`h-64 ${selectedFact.icon_key ? 'bg-white' : ''}`}>
                 <img
-                  src={getQuizImageUrl(selectedFact.image_key)}
+                  src={getQuizImageUrl(
+                    selectedFact.icon_key
+                      ? (showOriginal ? selectedFact.image_key : selectedFact.icon_key)
+                      : selectedFact.image_key
+                  )}
                   alt={selectedFact.item}
                   className="w-full h-full object-contain"
                 />
               </div>
+
               {selectedFact.icon_key && (
-                <div className="w-1/2 h-64 bg-white">
-                  <img
-                    src={getQuizImageUrl(selectedFact.icon_key)}
-                    alt={`${selectedFact.item} ikon`}
-                    className="w-full h-full object-contain"
-                  />
+                <div className="p-3 bg-gray-800 border-t border-gray-700 flex items-center justify-between">
+                  <div className="text-sm text-gray-300">
+                    {showOriginal ? 'Upprunaleg mynd' : 'Ikon'}
+                  </div>
+                  <button
+                    onClick={() => setShowOriginal((v) => !v)}
+                    className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-sm"
+                  >
+                    {showOriginal ? 'Sýna ikon' : 'Sýna upprunalegu mynd'}
+                  </button>
                 </div>
               )}
             </div>
+
+            {(selectedFact.joke_text || selectedFact.joke_key) && (
+              <div className="p-4 border-t border-gray-700">
+                <h3 className="text-white font-semibold mb-2">Brandari</h3>
+                {selectedFact.joke_text && (
+                  <p className="text-gray-200 text-sm leading-relaxed">{selectedFact.joke_text}</p>
+                )}
+                {selectedFact.joke_key && (
+                  <div className="mt-3 bg-gray-900 rounded-lg overflow-hidden">
+                    <img
+                      src={getQuizImageUrl(selectedFact.joke_key)}
+                      alt="Brandara bakgrunnur"
+                      className="w-full h-48 object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Content */}
             <div className="p-6">

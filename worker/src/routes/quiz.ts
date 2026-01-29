@@ -46,13 +46,39 @@ quiz.get('/image/*', async (c) => {
   const rawPath = new URL(c.req.url).pathname; // preserves percent-encoding
   const rawKey = rawPath.startsWith(prefix) ? rawPath.slice(prefix.length) : c.req.path.replace(prefix, '');
 
-  const candidateKeys: string[] = [rawKey];
-  try {
-    const decoded = decodeURIComponent(rawKey);
-    if (decoded && decoded !== rawKey) candidateKeys.push(decoded);
-  } catch {
-    // Ignore malformed percent-encoding
-  }
+  const candidateKeys = (() => {
+    const keys: string[] = [];
+    const add = (k: string | null | undefined) => {
+      if (!k) return;
+      if (!keys.includes(k)) keys.push(k);
+    };
+
+    const expand = (k: string) => {
+      // Try exactly as-is first
+      add(k);
+
+      // Also try toggling the common "quiz/" prefix since some stored keys are
+      // relative (icons/...) while others are full (quiz/icons/...).
+      if (k.startsWith('quiz/')) {
+        add(k.slice('quiz/'.length));
+      } else if (k.startsWith('icons/') || k.startsWith('jokes/') || k.startsWith('funfacts/')) {
+        add(`quiz/${k}`);
+      }
+    };
+
+    // Raw path key (keeps percent-encoding)
+    expand(rawKey);
+
+    // Decoded variant (if valid)
+    try {
+      const decoded = decodeURIComponent(rawKey);
+      if (decoded && decoded !== rawKey) expand(decoded);
+    } catch {
+      // Ignore malformed percent-encoding
+    }
+
+    return keys;
+  })();
 
   try {
     let object: R2ObjectBody | null = null;

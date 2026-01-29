@@ -696,6 +696,8 @@ export interface FunFact {
   confidence: number;
   image_key: string;
   icon_key: string | null;
+  joke_key?: string | null;
+  joke_text?: string | null;
   created_at: number;
   seen?: boolean;
   seen_at?: number;
@@ -749,5 +751,10 @@ export async function markFunFactSeen(userHash: string, quizImageId: string): Pr
 
 export async function getRandomFunFact(userHash: string): Promise<{ success: boolean; fact: FunFact; seen: boolean }> {
   const res = await fetch(`${API_BASE}/api/funfacts/random?userHash=${encodeURIComponent(userHash)}`);
+  return res.json();
+}
+
+export async function getFunFactDetail(quizImageId: string): Promise<{ success: boolean; fact: FunFact }> {
+  const res = await fetch(`${API_BASE}/api/funfacts/detail/${encodeURIComponent(quizImageId)}`);
   return res.json();
 }
