@@ -39,17 +39,93 @@ interface QuizScore {
 // GET /api/quiz/image/:key - Serve quiz image from R2
 quiz.get('/image/*', async (c) => {
   const env = c.env;
-  const imageKey = c.req.path.replace('/api/quiz/image/', '');
+  // Important: keys may be URL-encoded in the path (e.g. t%C3%B6lvum%C3%BAs...),
+  // while R2 may contain either encoded or decoded variants depending on how
+  // the key was originally generated. Try both.
+  const prefix = '/api/quiz/image/';
+  const rawPath = new URL(c.req.url).pathname; // preserves percent-encoding
+  const rawKey = rawPath.startsWith(prefix) ? rawPath.slice(prefix.length) : c.req.path.replace(prefix, '');
+
+  const candidateKeys: string[] = [rawKey];
+  try {
+    const decoded = decodeURIComponent(rawKey);
+    if (decoded && decoded !== rawKey) candidateKeys.push(decoded);
+  } catch {
+    // Ignore malformed percent-encoding
+  }
 
   try {
-    const object = await env.IMAGES.get(imageKey);
+    let object: R2ObjectBody | null = null;
+    let foundKey: string | null = null;
+
+    for (const key of candidateKeys) {
+      // eslint-disable-next-line no-await-in-loop
+      const candidate = await env.IMAGES.get(key);
+      if (candidate) {
+        object = candidate;
+        foundKey = key;
+        break;
+      }
+    }
+
     if (!object) {
-      return c.json({ error: 'Mynd fannst ekki' }, 404);
+      // Fun facts currently use image_key placeholders; return a lightweight placeholder
+      // instead of spamming 404s until real assets exist in R2.
+      const placeholderKey = (() => {
+        for (const k of candidateKeys) {
+          if (k.startsWith('funfacts/')) return k;
+          try {
+            const decoded = decodeURIComponent(k);
+            if (decoded.startsWith('funfacts/')) return decoded;
+          } catch {
+            // ignore
+          }
+        }
+        return null;
+      })();
+
+      if (placeholderKey) {
+        const label = placeholderKey
+          .replace(/^funfacts\//, '')
+          .replace(/^illustration_/, '')
+          .replace(/\.png$/i, '')
+          .replace(/_/g, ' ')
+          .trim();
+
+        const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="${label}">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22c55e"/>
+      <stop offset="1" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="64" fill="url(#g)"/>
+  <circle cx="256" cy="210" r="96" fill="rgba(255,255,255,0.25)"/>
+  <text x="256" y="340" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, Arial" font-size="28" font-weight="700" fill="#fff">
+    Fun fact
+  </text>
+  <text x="256" y="382" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, Arial" font-size="18" fill="rgba(255,255,255,0.9)">
+    ${label}
+  </text>
+</svg>`;
+
+        const headers = new Headers();
+        headers.set('Content-Type', 'image/svg+xml; charset=utf-8');
+        headers.set('Cache-Control', 'public, max-age=3600'); // 1h
+        return new Response(svg, { headers, status: 200 });
+      }
+
+      return c.json({ error: 'Mynd fannst ekki', keyTried: candidateKeys }, 404);
     }
 
     const headers = new Headers();
     headers.set('Content-Type', object.httpMetadata?.contentType || 'image/jpeg');
     headers.set('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+
+    if (foundKey && foundKey !== rawKey) {
+      headers.set('X-Resolved-R2-Key', foundKey);
+    }
 
     return new Response(object.body, { headers });
   } catch (err) {
