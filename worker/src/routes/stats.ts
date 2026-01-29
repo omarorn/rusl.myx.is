@@ -137,42 +137,37 @@ stats.get('/recent', async (c) => {
 // GET /api/stats/joke - AI-generated joke of the day based on recent scans
 stats.get('/joke', async (c) => {
   const CACHE_KEY = 'joke_of_the_day';
+  const BACKGROUND_KEY_CACHE = 'joke_of_the_day_background_key';
   const CACHE_TTL = 24 * 60 * 60; // 24 hours in seconds
 
   const attachLatestBackgroundIfMissing = async (jokeData: JokeResponse): Promise<JokeResponse> => {
     if (jokeData.backgroundUrl) return jokeData;
 
     try {
-      const prefixes = ['jokes/', 'quiz/jokes/'];
-      const keys: string[] = [];
+      // 1) Best option: use stored "last background key" (written when we generate a background)
+      const storedKey = await c.env.CACHE.get(BACKGROUND_KEY_CACHE);
+      const candidates: string[] = [];
+      if (storedKey) candidates.push(storedKey);
 
-      for (const prefix of prefixes) {
+      // 2) Fallback: probe a known existing background key (legacy) so desktop shows *something*
+      // even if KV was populated before we started storing BACKGROUND_KEY_CACHE.
+      candidates.push('jokes/background_1769018591407.png');
+      candidates.push('quiz/jokes/background_1769018591407.png');
+
+      for (const key of candidates) {
         // eslint-disable-next-line no-await-in-loop
-        const listed = await c.env.IMAGES.list({ prefix });
-        for (const obj of listed.objects || []) {
-          if (!obj?.key) continue;
-          if (/^(quiz\/)?jokes\/background_\d+\.(png|jpg|jpeg|webp)$/i.test(obj.key)) {
-            keys.push(obj.key);
-          }
+        const head = await c.env.IMAGES.head(key);
+        if (head) {
+          // Remember for next time (7 days)
+          await c.env.CACHE.put(BACKGROUND_KEY_CACHE, key, { expirationTtl: 7 * 24 * 60 * 60 });
+          return {
+            ...jokeData,
+            backgroundUrl: `/api/quiz/image/${key}`,
+          };
         }
       }
 
-      if (keys.length === 0) return jokeData;
-
-      // Choose newest by timestamp inside the filename.
-      const newest = keys
-        .map((k) => {
-          const match = k.match(/background_(\d+)\./);
-          return { k, ts: match ? Number(match[1]) : 0 };
-        })
-        .sort((a, b) => b.ts - a.ts)[0]?.k;
-
-      if (!newest) return jokeData;
-
-      return {
-        ...jokeData,
-        backgroundUrl: `/api/quiz/image/${newest}`,
-      };
+      return jokeData;
     } catch (err) {
       console.error('[JokeOfDay] Failed to attach cached background:', err);
       return jokeData;
@@ -224,7 +219,10 @@ stats.get('/joke', async (c) => {
       basedOn: [],
       generatedAt: new Date().toISOString(),
     };
-    return c.json(fallback);
+
+    const enrichedFallback = await attachLatestBackgroundIfMissing(fallback);
+    await c.env.CACHE.put(CACHE_KEY, JSON.stringify(enrichedFallback), { expirationTtl: CACHE_TTL });
+    return c.json(enrichedFallback);
   }
 
   // Generate background image for the joke
@@ -251,6 +249,8 @@ stats.get('/joke', async (c) => {
 
       // Add background URL to response
       jokeResponse.backgroundUrl = `/api/quiz/image/${backgroundKey}`;
+      // Persist last known background key so cached jokes can still show a background.
+      await c.env.CACHE.put(BACKGROUND_KEY_CACHE, backgroundKey, { expirationTtl: 7 * 24 * 60 * 60 });
       console.log('[JokeOfDay] Background saved:', backgroundKey);
     }
   } catch (bgError) {
