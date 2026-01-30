@@ -1,7 +1,7 @@
 import type { GeminiResponse, BinType, DetectedObject } from '../types';
 
-// Using Gemini 2.0 Flash Exp (more reliable quota)
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
+// Using Gemini 1.5 Pro (v1beta - stable model with vision support)
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent';
 
 // Gemini 2.5 Flash Image for icon generation
 const GEMINI_IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent';

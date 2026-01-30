@@ -1,5 +1,6 @@
 import type { Env, ClassificationResult, BinType, Language, DetectedObject } from '../types';
 import { classifyWithGemini } from './gemini';
+import { classifyWithCloudflareAI } from './cloudflare-ai';
 import {
   checkOverrides,
   getBinInfoForRegion,
@@ -59,9 +60,27 @@ export async function classifyItem(
   console.log('[Classifier] Starting classification, image size:', Math.round(imageBase64.length / 1024), 'KB');
   console.log('[Classifier] Language:', language, 'Region:', region);
 
-  // Use Gemini as primary (Cloudflare AI Llama 3.2 has EU restrictions)
-  const geminiResult = await classifyWithGemini(imageBase64, env.GEMINI_API_KEY);
+  // Try Gemini first, fallback to Cloudflare AI
+  let geminiResult = await classifyWithGemini(imageBase64, env.GEMINI_API_KEY);
   console.log('[Classifier] Gemini result:', geminiResult ? `${geminiResult.item} (${geminiResult.confidence})` : 'null');
+
+  // Fallback to Cloudflare AI if Gemini fails
+  let usedCloudflareAI = false;
+  if (!geminiResult) {
+    console.log('[Classifier] Gemini failed, trying Cloudflare AI fallback...');
+    const cfResult = await classifyWithCloudflareAI(imageBase64, env.AI);
+    if (cfResult) {
+      // Convert Cloudflare AI response to Gemini format
+      geminiResult = {
+        item: cfResult.item,
+        bin: cfResult.bin,
+        reason: cfResult.reason,
+        confidence: cfResult.confidence,
+      };
+      usedCloudflareAI = true;
+      console.log('[Classifier] Cloudflare AI result:', `${geminiResult.item} (${geminiResult.confidence})`);
+    }
+  }
 
   if (geminiResult) {
     // Special handling for cats - not waste! 🐱
@@ -98,7 +117,7 @@ export async function classifyItem(
       binInfo: getBinInfoForRegion(bin, region, language as RulesLanguage),
       reason: geminiResult.reason,
       confidence: geminiResult.confidence,
-      source: 'gemini',
+      source: usedCloudflareAI ? 'cloudflare-ai' : 'gemini',
       dadJoke: geminiResult.fun_fact,
       isWideShot: geminiResult.is_wide_shot,
       allObjects: geminiResult.all_objects,
