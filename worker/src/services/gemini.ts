@@ -3,8 +3,8 @@ import type { GeminiResponse, BinType, DetectedObject } from '../types';
 // Using Gemini Flash Latest (generic model - always up to date)
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
-// Gemini Pro Latest for icon generation (better quality)
-const GEMINI_IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent';
+// Gemini 3 Pro Image Preview for icon generation (specialized image model)
+const GEMINI_IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent';
 
 const SYSTEM_PROMPT = `Þú ert sérfræðingur í ruslaflokkun á Íslandi (SORPA svæðið).
 Þú hefur dökkann húmor og elskar pabba-brandara.

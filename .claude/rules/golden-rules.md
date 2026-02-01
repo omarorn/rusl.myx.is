@@ -132,28 +132,30 @@ return c.json({ error: 'Villa kom upp.' }, 500);
 | Service | Model | File | Reason |
 |---------|-------|------|--------|
 | **Classification** | `gemini-flash-latest` | `services/gemini.ts` | Needs accuracy for waste sorting |
-| **Icon Generation** | `gemini-pro-latest` | `services/gemini.ts` | Better quality for visual output |
+| **Icon Generation** | `gemini-3-pro-image-preview` | `services/gemini.ts` | Specialized image model for high-quality icons |
 | **Review Process** | `gemini-flash-latest` | `services/review.ts` | Critical accuracy for validation |
 | **Image Descriptions** | `gemini-2.5-flash-lite` | `routes/describe.ts` | Fast TTS descriptions |
 | **Joke Generation** | `gemini-2.5-flash-lite` | `services/joke-generator.ts` | Simple text, optimized for speed |
-| **Joke Background** | `gemini-2.5-flash-latest` | `services/joke-generator.ts` | Image generation needs quality |
-| **Image Cartoons** | `gemini-flash-latest` | `services/image-gen.ts` | Image processing needs quality |
+| **Joke Background** | `gemini-2.5-flash-image` | `services/joke-generator.ts` | Image generation model |
+| **Image Cartoons** | `gemini-2.5-flash-image` | `services/image-gen.ts` | Image-to-image generation |
 | **Text-to-Speech** | `gemini-2.5-flash-preview-tts` | `routes/describe.ts` | Specialized TTS model with audio support |
 
 ### Model Selection Guidelines
 
 - **Use `gemini-flash-latest`** — General purpose, good balance of speed/accuracy
 - **Use `gemini-2.5-flash-lite`** — Simple text tasks where speed matters (jokes, descriptions)
-- **Use `gemini-pro-latest`** — Complex tasks or when quality is critical (icons, images)
+- **Use `gemini-2.5-flash-image`** — Image generation (cartoons, backgrounds)
+- **Use `gemini-3-pro-image-preview`** — High-quality image generation (icons)
 - **Use `gemini-2.5-flash-preview-tts`** — ONLY for text-to-speech audio generation
 
 ### Never Use
 - ❌ Versioned models: `gemini-1.5-flash-8b`, `gemini-2.0-flash-001`
 - ❌ Experimental suffix: `gemini-2.0-flash-exp`
-- ❌ Preview suffix: `gemini-3-pro-image-preview` (except TTS)
 - ❌ Specific builds: Any model with specific version numbers
 
-**Exception:** TTS requires the preview model (`gemini-2.5-flash-preview-tts`) as stable TTS models are not yet available.
+**Exceptions:**
+- Image models use specialized variants (`gemini-2.5-flash-image`, `gemini-3-pro-image-preview`)
+- TTS requires preview model (`gemini-2.5-flash-preview-tts`)
 
 ---
 
