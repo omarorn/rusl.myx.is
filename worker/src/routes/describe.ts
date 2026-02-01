@@ -100,9 +100,9 @@ describe.post('/tts', async (c) => {
       return c.json({ error: 'Texti vantar' }, 400);
     }
 
-    // Use Gemini 2.5 Flash Latest with TTS capability
+    // Use Gemini 2.5 Flash Preview TTS (specialized for audio generation)
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-latest:generateContent?key=${env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${env.GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -202,7 +202,7 @@ describe.post('/speak', async (c) => {
 
     // Step 2: Convert to speech using Gemini TTS with Icelandic instructions
     const ttsResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-latest:generateContent?key=${env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${env.GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
