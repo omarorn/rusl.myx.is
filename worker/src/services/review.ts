@@ -1,9 +1,8 @@
 import type { Env, GeminiResponse, BinType } from '../types';
 import { checkOverrides, getReasonText, BIN_INFO } from './iceland-rules';
 
-// Use same model as main classifier for review (Gemini 2.0 Flash)
-// TODO: Upgrade to Gemini Pro when available
-const GEMINI_PRO_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent';
+// Use Gemini Flash Latest for review (generic model - always up to date)
+const GEMINI_PRO_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
 // Claude API for deep thinking
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';

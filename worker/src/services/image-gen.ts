@@ -1,8 +1,8 @@
-// Image generation service using Gemini 2.0 Flash Image
+// Image generation service using Gemini Flash Latest
 // Used for cartoon effects and image editing
 
-// Gemini 2.0 Flash Image Generation model
-const GEMINI_IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent';
+// Gemini Flash Latest for Image Generation
+const GEMINI_IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
 export interface CartoonResult {
   success: boolean;
