@@ -1,7 +1,7 @@
 # Golden Rules: rusl.myx.is Development
 
 **Purpose**: Core development principles for the Icelandic waste classification system
-**Last Updated**: 2026-01-19
+**Last Updated**: 2026-02-01
 **Applies to**: All rusl.myx.is development work
 
 ---
@@ -120,6 +120,40 @@ return c.json({ error: 'Villa kom upp.' }, 500);
 - **128MB memory limit**: Stream large files, don't buffer
 - **30s CPU time limit**: Keep operations fast
 - **No Node.js APIs**: Use Web APIs (Request, Response, fetch)
+
+---
+
+## AI Models (Google Gemini)
+
+**IMPORTANT:** Always use generic model names (e.g., `-latest`, `-lite`) to avoid deprecation.
+
+### Model Configuration
+
+| Service | Model | File | Reason |
+|---------|-------|------|--------|
+| **Classification** | `gemini-flash-latest` | `services/gemini.ts` | Needs accuracy for waste sorting |
+| **Icon Generation** | `gemini-pro-latest` | `services/gemini.ts` | Better quality for visual output |
+| **Review Process** | `gemini-flash-latest` | `services/review.ts` | Critical accuracy for validation |
+| **Image Descriptions** | `gemini-2.5-flash-lite` | `routes/describe.ts` | Fast TTS descriptions |
+| **Joke Generation** | `gemini-2.5-flash-lite` | `services/joke-generator.ts` | Simple text, optimized for speed |
+| **Joke Background** | `gemini-2.5-flash-latest` | `services/joke-generator.ts` | Image generation needs quality |
+| **Image Cartoons** | `gemini-flash-latest` | `services/image-gen.ts` | Image processing needs quality |
+| **Text-to-Speech** | `gemini-2.5-flash-preview-tts` | `routes/describe.ts` | Specialized TTS model with audio support |
+
+### Model Selection Guidelines
+
+- **Use `gemini-flash-latest`** — General purpose, good balance of speed/accuracy
+- **Use `gemini-2.5-flash-lite`** — Simple text tasks where speed matters (jokes, descriptions)
+- **Use `gemini-pro-latest`** — Complex tasks or when quality is critical (icons, images)
+- **Use `gemini-2.5-flash-preview-tts`** — ONLY for text-to-speech audio generation
+
+### Never Use
+- ❌ Versioned models: `gemini-1.5-flash-8b`, `gemini-2.0-flash-001`
+- ❌ Experimental suffix: `gemini-2.0-flash-exp`
+- ❌ Preview suffix: `gemini-3-pro-image-preview` (except TTS)
+- ❌ Specific builds: Any model with specific version numbers
+
+**Exception:** TTS requires the preview model (`gemini-2.5-flash-preview-tts`) as stable TTS models are not yet available.
 
 ---
 
