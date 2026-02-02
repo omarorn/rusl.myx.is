@@ -40,7 +40,10 @@ export function DesktopWrapper({ children }: DesktopWrapperProps) {
 
   // On desktop, show landing page with app in phone frame
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-emerald-900 flex relative">
+    <div
+      className="min-h-screen flex relative bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: 'url(/logoTRASH.MYX.IS.png)' }}
+    >
       {/* Language Switcher - Top Right */}
       <div className="absolute top-4 right-4 flex gap-2">
         <button
