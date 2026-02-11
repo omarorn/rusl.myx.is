@@ -1,1 +1,0 @@
-now utra think on all the features promised and the completed tasks and tell me what is missing, whats,  works, and what could be better, taka a critics approach

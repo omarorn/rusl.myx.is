@@ -1,87 +1,104 @@
-# /deploy-all - Deploy Worker
+---
+name: deploy-all
+description: Deploy all workers with mandatory pre-flight validation gates
+command: /deploy-all
+---
 
-Deploy the trash.myx.is worker to production with verification.
+# Deploy All Workers
 
-## What This Command Does
+Deploy all workers only after ALL validation gates pass.
 
-1. Runs type checking
-2. Deploys worker to Cloudflare
-3. Verifies deployment
-4. Monitors logs for errors
+## Pre-flight Gates (ALL MUST PASS — no exceptions)
 
-## Usage
+### Gate 1: TypeScript Compilation
+```bash
+npm run typecheck
+```
+❌ **ABORT** if: any errors (zero tolerance for deploy)
+
+### Gate 2: Tests
+```bash
+npm run test
+```
+❌ **ABORT** if: any test failures
+
+### Gate 3: Lint
+```bash
+npm run lint
+```
+⚠️ **WARN** if: violations exist, but allow deploy if no errors
+
+### Gate 4: Build
+```bash
+npm run build
+```
+❌ **ABORT** if: build fails
+
+### Gate 5: CSS Build (if applicable)
+```bash
+npm run build:css
+```
+❌ **ABORT** if: CSS build fails
+
+### Gate 6: Package Lock Sync
+```bash
+npm ci --dry-run
+```
+❌ **ABORT** if: lock file out of sync with package.json
+
+### Gate 7: Database Migrations
+Check if there are unapplied migrations:
+```bash
+ls migrations/*.sql
+```
+If new migrations exist, apply to remote BEFORE deploying code:
+```bash
+npx wrangler d1 execute {{D1_DATABASE_NAME}} --remote --file=migrations/LATEST.sql
+```
+❌ **ABORT** if: code depends on unapplied migrations
+
+### Gate 8: Database Backup
+```bash
+npx wrangler d1 export {{D1_DATABASE_NAME}} --remote --output=backup-$(date +%Y%m%d).sql
+```
+
+## Deploy (only after all gates pass)
 
 ```bash
-/deploy-all
+# Main worker
+npx wrangler deploy
+
+# Additional workers (if applicable)
+npx wrangler deploy --config wrangler-{{WORKER_NAME}}.json
 ```
 
-## Execution Steps
+## Post-Deploy Verification
 
-1. **Pre-deployment checks**:
-   ```bash
-   cd worker && npm run typecheck  # Should pass with 0 errors
-   ```
-
-2. **Deploy worker**:
-   ```bash
-   cd worker && npm run deploy
-   ```
-
-3. **Verify deployment**:
-   ```bash
-   # Check API status
-   curl https://trash.myx.is/api/stats/global
-   ```
-
-4. **Monitor logs** (watch for errors):
-   ```bash
-   cd worker && npx wrangler tail
-   ```
-
-## Example Output
-
-```
-═══════════════════════════════════════════════
-   DEPLOYING RUSL.MYX.IS WORKER
-═══════════════════════════════════════════════
-
-[1/4] Pre-deployment checks...
-  ✅ TypeScript: 0 errors
-
-[2/4] Deploying worker...
-  ✅ Published rusl-myx-is (2.3s)
-     https://trash.myx.is
-     Version: f4e7b2a1
-
-[3/4] Verifying deployment...
-  ✅ Worker: 200 OK
-
-[4/4] Monitoring logs (60 seconds)...
-  📊 2026-01-19 14:30:25 POST /api/identify 200 (1.2s)
-  📊 2026-01-19 14:30:27 GET /api/stats 200 (45ms)
-  ✅ No errors detected
-
-═══════════════════════════════════════════════
-   DEPLOYMENT COMPLETE ✅
-═══════════════════════════════════════════════
-
-Worker deployed successfully.
-No errors in first 60 seconds of production logs.
-
-Next steps:
-1. Test classification in production
-2. Monitor logs: cd worker && npx wrangler tail
-```
-
-## Rollback (if needed)
-
+1. Health check:
 ```bash
-# Rollback to previous version
-cd worker && npx wrangler rollback [previous-version-id]
+curl "https://api.{{DOMAIN}}/health"
 ```
 
-## Notes
+2. Check logs for errors:
+```bash
+npx wrangler tail --format=json | head -50
+```
 
-- Single worker deployment (no multi-worker setup)
-- Deploy after significant changes
-- Monitor logs for classification errors
+3. Report:
+```
+## Deployment Report
+| Gate | Status |
+|------|--------|
+| TypeScript | ✅ 0 errors |
+| Tests | ✅ N/N passed |
+| Lint | ✅/⚠️ |
+| Build | ✅ |
+| CSS | ✅ |
+| Lock Sync | ✅ |
+| Migrations | ✅ Applied |
+| Backup | ✅ Created |
+
+| Worker | Status | URL |
+|--------|--------|-----|
+| main | ✅ | https://{{DOMAIN}} |
+```
