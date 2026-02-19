@@ -76,6 +76,27 @@ function getSettings(): { language: Language; region: Region } {
   }
 }
 
+function extractErrorMessage(payload: unknown, status: number): string {
+  if (payload && typeof payload === 'object' && 'error' in payload) {
+    const maybeError = (payload as { error?: unknown }).error;
+    if (typeof maybeError === 'string' && maybeError.trim()) {
+      return maybeError;
+    }
+  }
+  return `Request failed (${status})`;
+}
+
+async function fetchJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
+  const response = await fetch(input, init);
+  const payload: unknown = await response.json();
+
+  if (!response.ok) {
+    throw new Error(extractErrorMessage(payload, response.status));
+  }
+
+  return payload as T;
+}
+
 export async function identifyItem(imageBase64: string): Promise<IdentifyResponse> {
   const { language, region } = getSettings();
   const userHash = getUserHash();
@@ -128,7 +149,7 @@ export async function identifyItem(imageBase64: string): Promise<IdentifyRespons
 
   // Online - make the API request
   try {
-    const response = await fetch(`${API_BASE}/api/identify`, {
+    return await fetchJson<IdentifyResponse>(`${API_BASE}/api/identify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -138,7 +159,6 @@ export async function identifyItem(imageBase64: string): Promise<IdentifyRespons
         region,
       }),
     });
-    return response.json();
   } catch (err) {
     // Network error - try to queue
     if (!isOnline()) {
@@ -149,8 +169,7 @@ export async function identifyItem(imageBase64: string): Promise<IdentifyRespons
 }
 
 export async function getStats(): Promise<UserStats> {
-  const response = await fetch(`${API_BASE}/api/stats?userHash=${getUserHash()}`);
-  return response.json();
+  return fetchJson<UserStats>(`${API_BASE}/api/stats?userHash=${getUserHash()}`);
 }
 
 // Leaderboard types
@@ -170,8 +189,7 @@ export interface LeaderboardResponse {
 }
 
 export async function getLeaderboard(period: LeaderboardPeriod = 'all', limit: number = 10): Promise<LeaderboardResponse> {
-  const response = await fetch(`${API_BASE}/api/stats/leaderboard?period=${period}&limit=${limit}`);
-  return response.json();
+  return fetchJson<LeaderboardResponse>(`${API_BASE}/api/stats/leaderboard?period=${period}&limit=${limit}`);
 }
 
 // Generate cartoon icon from an image
@@ -180,12 +198,11 @@ export async function generateItemIcon(
   itemName: string
 ): Promise<{ success: boolean; iconImage?: string; error?: string }> {
   try {
-    const response = await fetch(`${API_BASE}/api/image/icon`, {
+    return await fetchJson<{ success: boolean; iconImage?: string; error?: string }>(`${API_BASE}/api/image/icon`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image: imageBase64, itemName }),
     });
-    return response.json();
   } catch (err) {
     return { success: false, error: 'Network error' };
   }
@@ -225,12 +242,11 @@ export interface QuizScore {
 }
 
 export async function getQuizQuestion(): Promise<QuizQuestion> {
-  const response = await fetch(`${API_BASE}/api/quiz/random`);
-  return response.json();
+  return fetchJson<QuizQuestion>(`${API_BASE}/api/quiz/random`);
 }
 
 export async function submitQuizAnswer(questionId: string, answer: string): Promise<QuizAnswer> {
-  const response = await fetch(`${API_BASE}/api/quiz/answer`, {
+  return fetchJson<QuizAnswer>(`${API_BASE}/api/quiz/answer`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -239,7 +255,6 @@ export async function submitQuizAnswer(questionId: string, answer: string): Prom
       userHash: getUserHash(),
     }),
   });
-  return response.json();
 }
 
 export async function submitQuizScore(score: number, totalQuestions: number, mode: string, timeSeconds?: number): Promise<void> {
@@ -257,40 +272,35 @@ export async function submitQuizScore(score: number, totalQuestions: number, mod
 }
 
 export async function getQuizLeaderboard(mode: string = 'timed'): Promise<{ mode: string; scores: QuizScore[] }> {
-  const response = await fetch(`${API_BASE}/api/quiz/leaderboard?mode=${mode}`);
-  return response.json();
+  return fetchJson<{ mode: string; scores: QuizScore[] }>(`${API_BASE}/api/quiz/leaderboard?mode=${mode}`);
 }
 
 export async function deleteQuizScores(password: string): Promise<{ success: boolean; message?: string; error?: string }> {
-  const response = await fetch(`${API_BASE}/api/quiz/scores`, {
+  return fetchJson<{ success: boolean; message?: string; error?: string }>(`${API_BASE}/api/quiz/scores`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password }),
   });
-  return response.json();
 }
 
 export async function deleteQuizImages(password: string): Promise<{ success: boolean; message?: string; error?: string }> {
-  const response = await fetch(`${API_BASE}/api/quiz/images`, {
+  return fetchJson<{ success: boolean; message?: string; error?: string }>(`${API_BASE}/api/quiz/images`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password }),
   });
-  return response.json();
 }
 
 export async function getQuizDuplicates(): Promise<{ success: boolean; duplicates: Array<{ item: string; bin: string; count: number }>; total: number }> {
-  const response = await fetch(`${API_BASE}/api/quiz/duplicates`);
-  return response.json();
+  return fetchJson<{ success: boolean; duplicates: Array<{ item: string; bin: string; count: number }>; total: number }>(`${API_BASE}/api/quiz/duplicates`);
 }
 
 export async function deleteQuizDuplicates(password: string): Promise<{ success: boolean; message?: string; error?: string }> {
-  const response = await fetch(`${API_BASE}/api/quiz/duplicates`, {
+  return fetchJson<{ success: boolean; message?: string; error?: string }>(`${API_BASE}/api/quiz/duplicates`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password }),
   });
-  return response.json();
 }
 
 // Live description API
@@ -309,32 +319,29 @@ export interface SpeakResponse {
 }
 
 export async function describeImage(imageBase64: string): Promise<DescribeResponse> {
-  const response = await fetch(`${API_BASE}/api/describe`, {
+  return fetchJson<DescribeResponse>(`${API_BASE}/api/describe`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ image: imageBase64 }),
   });
-  return response.json();
 }
 
 // Combined describe + TTS using Gemini 2.5 Flash Preview TTS
 export async function speakImage(imageBase64: string): Promise<SpeakResponse> {
-  const response = await fetch(`${API_BASE}/api/describe/speak`, {
+  return fetchJson<SpeakResponse>(`${API_BASE}/api/describe/speak`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ image: imageBase64 }),
   });
-  return response.json();
 }
 
 // Text-to-speech only using Gemini 2.5 Flash Preview TTS
 export async function textToSpeech(text: string): Promise<{ success: boolean; audio?: string; mimeType?: string; error?: string }> {
-  const response = await fetch(`${API_BASE}/api/describe/tts`, {
+  return fetchJson<{ success: boolean; audio?: string; mimeType?: string; error?: string }>(`${API_BASE}/api/describe/tts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),
   });
-  return response.json();
 }
 
 export { getUserHash };
@@ -392,8 +399,7 @@ export async function getAd(placement: AdPlacement, context?: { bin?: string; it
   if (context?.bin) params.append('bin', context.bin);
   if (context?.item) params.append('item', context.item);
 
-  const response = await fetch(`${API_BASE}/api/ads?${params}`);
-  return response.json();
+  return fetchJson<AdResponse>(`${API_BASE}/api/ads?${params}`);
 }
 
 export async function recordAdClick(impressionId: string): Promise<void> {
@@ -408,8 +414,7 @@ export async function recordAdClick(impressionId: string): Promise<void> {
 }
 
 export async function getSponsors(): Promise<{ success: boolean; sponsors: Sponsor[] }> {
-  const response = await fetch(`${API_BASE}/api/ads/sponsors`);
-  return response.json();
+  return fetchJson<{ success: boolean; sponsors: Sponsor[] }>(`${API_BASE}/api/ads/sponsors`);
 }
 
 // Admin API
@@ -481,10 +486,9 @@ export async function getAdminImages(
   if (!adminPassword) {
     return { success: false, images: [], counts: { total: 0, approved: 0, pending: 0, rejected: 0 }, pagination: { limit, offset }, error: 'Ekki innskráður' };
   }
-  const response = await fetch(`${API_BASE}/api/admin/images?status=${status}&limit=${limit}&offset=${offset}`, {
+  return fetchJson<AdminImagesResponse>(`${API_BASE}/api/admin/images?status=${status}&limit=${limit}&offset=${offset}`, {
     headers: { 'Authorization': `Bearer ${adminPassword}` },
   });
-  return response.json();
 }
 
 export async function updateAdminImage(
@@ -494,7 +498,7 @@ export async function updateAdminImage(
   if (!adminPassword) {
     return { success: false, error: 'Ekki innskráður' };
   }
-  const response = await fetch(`${API_BASE}/api/admin/images/${id}`, {
+  return fetchJson<{ success: boolean; message?: string; error?: string }>(`${API_BASE}/api/admin/images/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -502,18 +506,16 @@ export async function updateAdminImage(
     },
     body: JSON.stringify(updates),
   });
-  return response.json();
 }
 
 export async function deleteAdminImage(id: string): Promise<{ success: boolean; message?: string; error?: string }> {
   if (!adminPassword) {
     return { success: false, error: 'Ekki innskráður' };
   }
-  const response = await fetch(`${API_BASE}/api/admin/images/${id}`, {
+  return fetchJson<{ success: boolean; message?: string; error?: string }>(`${API_BASE}/api/admin/images/${id}`, {
     method: 'DELETE',
     headers: { 'Authorization': `Bearer ${adminPassword}` },
   });
-  return response.json();
 }
 
 export async function batchAdminImages(
@@ -523,7 +525,7 @@ export async function batchAdminImages(
   if (!adminPassword) {
     return { success: false, error: 'Ekki innskráður' };
   }
-  const response = await fetch(`${API_BASE}/api/admin/images/batch`, {
+  return fetchJson<{ success: boolean; message?: string; error?: string }>(`${API_BASE}/api/admin/images/batch`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -531,7 +533,6 @@ export async function batchAdminImages(
     },
     body: JSON.stringify({ ids, action }),
   });
-  return response.json();
 }
 
 export async function getAdminStats(): Promise<AdminStatsResponse> {
@@ -543,10 +544,9 @@ export async function getAdminStats(): Promise<AdminStatsResponse> {
       recentScans: [],
     };
   }
-  const response = await fetch(`${API_BASE}/api/admin/stats`, {
+  return fetchJson<AdminStatsResponse>(`${API_BASE}/api/admin/stats`, {
     headers: { 'Authorization': `Bearer ${adminPassword}` },
   });
-  return response.json();
 }
 
 export function getQuizImageUrl(imageKey: string): string {
@@ -558,18 +558,16 @@ export async function generateMissingIcons(
   password: string,
   limit: number = 5
 ): Promise<{ success: boolean; message?: string; results?: Array<{ id: string; item: string; success: boolean; error?: string; iconKey?: string }>; error?: string }> {
-  const response = await fetch(`${API_BASE}/api/quiz/generate-missing-icons`, {
+  return fetchJson<{ success: boolean; message?: string; results?: Array<{ id: string; item: string; success: boolean; error?: string; iconKey?: string }>; error?: string }>(`${API_BASE}/api/quiz/generate-missing-icons`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password, limit }),
   });
-  return response.json();
 }
 
 // Get quiz images missing icons
 export async function getMissingIcons(): Promise<{ success: boolean; images?: Array<{ id: string; image_key: string; item: string; bin: string }>; total?: number; error?: string }> {
-  const response = await fetch(`${API_BASE}/api/quiz/missing-icons`);
-  return response.json();
+  return fetchJson<{ success: boolean; images?: Array<{ id: string; image_key: string; item: string; bin: string }>; total?: number; error?: string }>(`${API_BASE}/api/quiz/missing-icons`);
 }
 
 // Joke of the day API
@@ -581,8 +579,7 @@ export interface JokeOfTheDay {
 }
 
 export async function getJokeOfTheDay(): Promise<JokeOfTheDay> {
-  const response = await fetch(`${API_BASE}/api/stats/joke`);
-  return response.json();
+  return fetchJson<JokeOfTheDay>(`${API_BASE}/api/stats/joke`);
 }
 
 export async function flagForReview(payload: {
@@ -593,12 +590,11 @@ export async function flagForReview(payload: {
   confidence?: number;
   imageKey?: string | null;
 }): Promise<{ success: boolean; error?: string }> {
-  const response = await fetch(`${API_BASE}/api/review/flag`, {
+  return fetchJson<{ success: boolean; error?: string }>(`${API_BASE}/api/review/flag`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  return response.json();
 }
 
 // Image generation API
@@ -618,24 +614,22 @@ export async function generateCartoon(
   imageBase64: string,
   style: 'cute' | 'comic' | 'anime' = 'cute'
 ): Promise<CartoonResponse> {
-  const response = await fetch(`${API_BASE}/api/image/cartoon`, {
+  return fetchJson<CartoonResponse>(`${API_BASE}/api/image/cartoon`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ image: imageBase64, style }),
   });
-  return response.json();
 }
 
 export async function cropImage(
   imageBase64: string,
   cropBox: { x: number; y: number; width: number; height: number }
 ): Promise<CropResponse> {
-  const response = await fetch(`${API_BASE}/api/image/crop`, {
+  return fetchJson<CropResponse>(`${API_BASE}/api/image/crop`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ image: imageBase64, cropBox }),
   });
-  return response.json();
 }
 
 // ============================================
@@ -646,61 +640,53 @@ import type { SorpaStation, StationRamp, SorpaTrip, TripItem, SorpaBinInfo } fro
 
 // Stations API
 export async function getStations(): Promise<{ stations: SorpaStation[] }> {
-  const res = await fetch(`${API_BASE}/api/stations`);
-  return res.json();
+  return fetchJson<{ stations: SorpaStation[] }>(`${API_BASE}/api/stations`);
 }
 
 export async function getStation(id: string): Promise<{ station: SorpaStation; ramps: StationRamp[] }> {
-  const res = await fetch(`${API_BASE}/api/stations/${id}`);
-  return res.json();
+  return fetchJson<{ station: SorpaStation; ramps: StationRamp[] }>(`${API_BASE}/api/stations/${id}`);
 }
 
 // Trips API
 export async function createTrip(userHash: string, stationId?: string): Promise<{ trip: SorpaTrip }> {
-  const res = await fetch(`${API_BASE}/api/trips`, {
+  return fetchJson<{ trip: SorpaTrip }>(`${API_BASE}/api/trips`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userHash, stationId }),
   });
-  return res.json();
 }
 
 export async function getTrip(id: string): Promise<{ trip: SorpaTrip; items: TripItem[] }> {
-  const res = await fetch(`${API_BASE}/api/trips/${id}`);
-  return res.json();
+  return fetchJson<{ trip: SorpaTrip; items: TripItem[] }>(`${API_BASE}/api/trips/${id}`);
 }
 
 export async function getUserTrips(userHash: string, status?: string): Promise<{ trips: SorpaTrip[] }> {
   const params = new URLSearchParams({ userHash });
   if (status) params.append('status', status);
-  const res = await fetch(`${API_BASE}/api/trips?${params}`);
-  return res.json();
+  return fetchJson<{ trips: SorpaTrip[] }>(`${API_BASE}/api/trips?${params}`);
 }
 
 export async function addTripItem(
   tripId: string,
   item: { itemName: string; homeBin: string; confidence?: number }
 ): Promise<{ item: TripItem; sorpaBinInfo: SorpaBinInfo }> {
-  const res = await fetch(`${API_BASE}/api/trips/${tripId}/items`, {
+  return fetchJson<{ item: TripItem; sorpaBinInfo: SorpaBinInfo }>(`${API_BASE}/api/trips/${tripId}/items`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(item),
   });
-  return res.json();
 }
 
 export async function completeTrip(tripId: string): Promise<{ success: boolean; pointsAwarded: number }> {
-  const res = await fetch(`${API_BASE}/api/trips/${tripId}/complete`, {
+  return fetchJson<{ success: boolean; pointsAwarded: number }>(`${API_BASE}/api/trips/${tripId}/complete`, {
     method: 'PUT',
   });
-  return res.json();
 }
 
 export async function removeTripItem(tripId: string, itemId: string): Promise<{ success: boolean }> {
-  const res = await fetch(`${API_BASE}/api/trips/${tripId}/items/${itemId}`, {
+  return fetchJson<{ success: boolean }>(`${API_BASE}/api/trips/${tripId}/items/${itemId}`, {
     method: 'DELETE',
   });
-  return res.json();
 }
 
 // Fun Facts API
@@ -748,30 +734,25 @@ export interface FunFactHistoryResponse {
 }
 
 export async function getAllFunFacts(userHash: string): Promise<FunFactsResponse> {
-  const res = await fetch(`${API_BASE}/api/funfacts?userHash=${encodeURIComponent(userHash)}`);
-  return res.json();
+  return fetchJson<FunFactsResponse>(`${API_BASE}/api/funfacts?userHash=${encodeURIComponent(userHash)}`);
 }
 
 export async function getFunFactHistory(userHash: string): Promise<FunFactHistoryResponse> {
-  const res = await fetch(`${API_BASE}/api/funfacts/history?userHash=${encodeURIComponent(userHash)}`);
-  return res.json();
+  return fetchJson<FunFactHistoryResponse>(`${API_BASE}/api/funfacts/history?userHash=${encodeURIComponent(userHash)}`);
 }
 
 export async function markFunFactSeen(userHash: string, quizImageId: string): Promise<{ success: boolean }> {
-  const res = await fetch(`${API_BASE}/api/funfacts/mark-seen`, {
+  return fetchJson<{ success: boolean }>(`${API_BASE}/api/funfacts/mark-seen`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userHash, quizImageId }),
   });
-  return res.json();
 }
 
 export async function getRandomFunFact(userHash: string): Promise<{ success: boolean; fact: FunFact; seen: boolean }> {
-  const res = await fetch(`${API_BASE}/api/funfacts/random?userHash=${encodeURIComponent(userHash)}`);
-  return res.json();
+  return fetchJson<{ success: boolean; fact: FunFact; seen: boolean }>(`${API_BASE}/api/funfacts/random?userHash=${encodeURIComponent(userHash)}`);
 }
 
 export async function getFunFactDetail(quizImageId: string): Promise<{ success: boolean; fact: FunFact }> {
-  const res = await fetch(`${API_BASE}/api/funfacts/detail/${encodeURIComponent(quizImageId)}`);
-  return res.json();
+  return fetchJson<{ success: boolean; fact: FunFact }>(`${API_BASE}/api/funfacts/detail/${encodeURIComponent(quizImageId)}`);
 }

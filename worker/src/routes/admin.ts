@@ -1,10 +1,8 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
+import { requireAdmin } from '../services/admin-auth';
 
 const admin = new Hono<{ Bindings: Env }>();
-
-// Admin password - same as existing quiz admin
-const ADMIN_PASSWORD = 'bobba';
 
 interface QuizImage {
   id: string;
@@ -20,21 +18,10 @@ interface QuizImage {
   created_at: number;
 }
 
-// Middleware to check admin password
-async function checkPassword(c: any): Promise<boolean> {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return false;
-  }
-  const password = authHeader.replace('Bearer ', '');
-  return password === ADMIN_PASSWORD;
-}
-
 // GET /api/admin/images - List all images with filtering
 admin.get('/images', async (c) => {
-  if (!await checkPassword(c)) {
-    return c.json({ error: 'Rangt lykilorð' }, 403);
-  }
+  const forbidden = requireAdmin(c);
+  if (forbidden) return forbidden;
 
   const env = c.env;
   const status = c.req.query('status') || 'all'; // all, approved, pending, rejected
@@ -82,9 +69,8 @@ admin.get('/images', async (c) => {
 
 // PUT /api/admin/images/:id - Update image (approve, reject, edit)
 admin.put('/images/:id', async (c) => {
-  if (!await checkPassword(c)) {
-    return c.json({ error: 'Rangt lykilorð' }, 403);
-  }
+  const forbidden = requireAdmin(c);
+  if (forbidden) return forbidden;
 
   const env = c.env;
   const id = c.req.param('id');
@@ -135,9 +121,8 @@ admin.put('/images/:id', async (c) => {
 
 // DELETE /api/admin/images/:id - Delete single image
 admin.delete('/images/:id', async (c) => {
-  if (!await checkPassword(c)) {
-    return c.json({ error: 'Rangt lykilorð' }, 403);
-  }
+  const forbidden = requireAdmin(c);
+  if (forbidden) return forbidden;
 
   const env = c.env;
   const id = c.req.param('id');
@@ -171,9 +156,8 @@ admin.delete('/images/:id', async (c) => {
 
 // POST /api/admin/images/batch - Batch approve/reject
 admin.post('/images/batch', async (c) => {
-  if (!await checkPassword(c)) {
-    return c.json({ error: 'Rangt lykilorð' }, 403);
-  }
+  const forbidden = requireAdmin(c);
+  if (forbidden) return forbidden;
 
   const env = c.env;
 
@@ -227,9 +211,8 @@ admin.post('/images/batch', async (c) => {
 
 // GET /api/admin/stats - Admin dashboard stats
 admin.get('/stats', async (c) => {
-  if (!await checkPassword(c)) {
-    return c.json({ error: 'Rangt lykilorð' }, 403);
-  }
+  const forbidden = requireAdmin(c);
+  if (forbidden) return forbidden;
 
   const env = c.env;
 
@@ -271,9 +254,8 @@ admin.get('/stats', async (c) => {
 
 // GET /api/admin/sync - Compare R2 bucket with DB, find orphans
 admin.get('/sync', async (c) => {
-  if (!await checkPassword(c)) {
-    return c.json({ error: 'Rangt lykilorð' }, 403);
-  }
+  const forbidden = requireAdmin(c);
+  if (forbidden) return forbidden;
 
   const env = c.env;
 
@@ -329,9 +311,8 @@ admin.get('/sync', async (c) => {
 
 // POST /api/admin/sync/cleanup - Clean up orphaned records
 admin.post('/sync/cleanup', async (c) => {
-  if (!await checkPassword(c)) {
-    return c.json({ error: 'Rangt lykilorð' }, 403);
-  }
+  const forbidden = requireAdmin(c);
+  if (forbidden) return forbidden;
 
   const env = c.env;
 

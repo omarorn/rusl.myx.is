@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { Env } from '../types';
+import { requireAdmin } from '../services/admin-auth';
 import {
   getAd,
   recordClick,
@@ -11,6 +12,12 @@ import {
 } from '../services/adService';
 
 const ads = new Hono<{ Bindings: Env }>();
+
+ads.use('/admin/*', async (c, next) => {
+  const forbidden = requireAdmin(c);
+  if (forbidden) return forbidden;
+  await next();
+});
 
 /**
  * GET /api/ads
@@ -90,8 +97,7 @@ ads.get('/sponsors', async (c) => {
   });
 });
 
-// Admin routes (would normally require authentication)
-// These are simplified for the MVP
+// Admin routes
 
 /**
  * GET /api/ads/admin/campaigns

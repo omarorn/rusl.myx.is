@@ -86,7 +86,7 @@ image.post('/icon', async (c) => {
     const ip = c.req.header('CF-Connecting-IP') || 'unknown';
     const rateLimitKey = `ratelimit:icon:${ip}`;
     const requests = await env.CACHE.get(rateLimitKey);
-    if (requests && parseInt(requests) > 20) {
+    if (requests && parseInt(requests) >= 20) {
       return c.json({ error: 'Of margar fyrirspurnir. Reyndu aftur eftir mínútu.' }, 429);
     }
     await env.CACHE.put(rateLimitKey, String((parseInt(requests || '0') + 1)), { expirationTtl: 60 });

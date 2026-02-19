@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Env } from '../types';
 import { BIN_INFO } from '../services/iceland-rules';
 import { generateIcon } from '../services/gemini';
+import { requireAdmin } from '../services/admin-auth';
 
 // Safe base64 encoding that doesn't cause call stack overflow for large images
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -350,10 +351,8 @@ quiz.delete('/scores', async (c) => {
 
   try {
     const { password } = await c.req.json<{ password: string }>();
-
-    if (password !== 'bobba') {
-      return c.json({ error: 'Rangt lykilorð' }, 403);
-    }
+    const forbidden = requireAdmin(c, password);
+    if (forbidden) return forbidden;
 
     await env.DB.prepare('DELETE FROM quiz_scores').run();
 
@@ -370,10 +369,8 @@ quiz.delete('/images', async (c) => {
 
   try {
     const { password } = await c.req.json<{ password: string }>();
-
-    if (password !== 'bobba') {
-      return c.json({ error: 'Rangt lykilorð' }, 403);
-    }
+    const forbidden = requireAdmin(c, password);
+    if (forbidden) return forbidden;
 
     // Get all image keys to delete from R2
     const images = await env.DB.prepare('SELECT image_key FROM quiz_images').all<{ image_key: string }>();
@@ -431,10 +428,8 @@ quiz.delete('/duplicates', async (c) => {
 
   try {
     const { password } = await c.req.json<{ password: string }>();
-
-    if (password !== 'bobba') {
-      return c.json({ error: 'Rangt lykilorð' }, 403);
-    }
+    const forbidden = requireAdmin(c, password);
+    if (forbidden) return forbidden;
 
     // Find duplicates - keep the one with highest times_correct ratio
     const toDelete = await env.DB.prepare(`
@@ -517,10 +512,8 @@ quiz.delete('/orphans', async (c) => {
 
   try {
     const { password } = await c.req.json<{ password: string }>();
-
-    if (password !== 'bobba') {
-      return c.json({ error: 'Rangt lykilorð' }, 403);
-    }
+    const forbidden = requireAdmin(c, password);
+    if (forbidden) return forbidden;
 
     // Get all images from database
     const images = await env.DB.prepare(
@@ -585,10 +578,8 @@ quiz.post('/generate-icon/:id', async (c) => {
 
   try {
     const { password } = await c.req.json<{ password: string }>();
-
-    if (password !== env.ADMIN_PASSWORD && password !== 'bobba') {
-      return c.json({ error: 'Rangt lykilorð' }, 403);
-    }
+    const forbidden = requireAdmin(c, password);
+    if (forbidden) return forbidden;
 
     // Get the image from database
     const image = await env.DB.prepare(
@@ -665,10 +656,8 @@ quiz.post('/generate-missing-icons', async (c) => {
 
   try {
     const { password, limit = 5 } = await c.req.json<{ password: string; limit?: number }>();
-
-    if (password !== env.ADMIN_PASSWORD && password !== 'bobba') {
-      return c.json({ error: 'Rangt lykilorð' }, 403);
-    }
+    const forbidden = requireAdmin(c, password);
+    if (forbidden) return forbidden;
 
     if (!env.GEMINI_API_KEY) {
       return c.json({ error: 'Gemini API lykill vantar' }, 500);

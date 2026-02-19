@@ -4,6 +4,7 @@ export interface Env {
   IMAGES: R2Bucket;
   CACHE: KVNamespace;
   AI: Ai;
+  ADMIN_PASSWORD?: string;
   HF_API_KEY?: string;  // Deprecated, not currently used
   GEMINI_API_KEY: string;
   CLAUDE_API_KEY?: string;  // Optional for deep review
@@ -52,7 +53,7 @@ export interface ClassificationResult {
   binInfo: BinInfo;
   reason: string;
   confidence: number;
-  source: 'huggingface' | 'gemini';
+  source: 'huggingface' | 'gemini' | 'cloudflare-ai';
   dadJoke?: string;  // AI-generated dad joke
   // Multi-object detection for wide shots
   isWideShot?: boolean;

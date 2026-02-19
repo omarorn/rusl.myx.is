@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { runPostProcessingReview } from '../services/review';
+import { requireAdmin } from '../services/admin-auth';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -109,8 +110,19 @@ app.get('/changes', async (c) => {
   return c.json({ changes: changes.results || [] });
 });
 
-// Manually trigger review (admin only - could add auth later)
+// Manually trigger review (admin only)
 app.post('/trigger', async (c) => {
+  let passwordFromBody: string | undefined;
+  try {
+    const body = await c.req.json<{ password?: string }>();
+    passwordFromBody = body.password;
+  } catch {
+    // No request body is okay if Authorization header is used.
+  }
+
+  const forbidden = requireAdmin(c, passwordFromBody);
+  if (forbidden) return forbidden;
+
   console.log('[Review] Manual trigger requested');
 
   const stats = await runPostProcessingReview(c.env);

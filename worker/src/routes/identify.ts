@@ -381,7 +381,7 @@ identify.post('/', async (c) => {
       confidence: 0,
       points: 0,
       streak: 0,
-      error: `Villa: ${err instanceof Error ? err.message : 'Óþekkt villa'}`,
+      error: 'Villa kom upp við að greina mynd. Reyndu aftur.',
     }, 500);
   }
 });
