@@ -131,9 +131,9 @@ return c.json({ error: 'Villa kom upp.' }, 500);
 
 | Service | Model | File | Reason |
 |---------|-------|------|--------|
-| **Classification** | `gemini-flash-latest` | `services/gemini.ts` | Needs accuracy for waste sorting |
+| **Classification** | `gemini-3.1-pro-preview` | `services/gemini.ts` | Best reasoning for accurate waste sorting |
 | **Icon Generation** | `gemini-3-pro-image-preview` | `services/gemini.ts` | Specialized image model for high-quality icons |
-| **Review Process** | `gemini-flash-latest` | `services/review.ts` | Critical accuracy for validation |
+| **Review Process** | `gemini-3.1-pro-preview` | `services/review.ts` | Critical accuracy for validation |
 | **Image Descriptions** | `gemini-2.5-flash-lite` | `routes/describe.ts` | Fast TTS descriptions |
 | **Joke Generation** | `gemini-2.5-flash-lite` | `services/joke-generator.ts` | Simple text, optimized for speed |
 | **Joke Background** | `gemini-2.5-flash-image` | `services/joke-generator.ts` | Image generation model |

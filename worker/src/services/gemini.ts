@@ -1,7 +1,7 @@
 import type { GeminiResponse, BinType, DetectedObject } from '../types';
 
-// Using Gemini Flash Latest (generic model - always up to date)
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+// Using Gemini 3.1 Pro Preview for accurate waste classification
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent';
 
 // Gemini 3 Pro Image Preview for icon generation (specialized image model)
 const GEMINI_IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent';

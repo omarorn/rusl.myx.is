@@ -1,8 +1,8 @@
-// Image generation service using Gemini 2.5 Flash Image
+// Image generation service using Gemini 3 Pro Image Preview
 // Used for cartoon effects and image editing
 
-// Gemini 2.5 Flash Image for cartoon generation
-const GEMINI_IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent';
+// Gemini 3 Pro Image Preview for high-quality cartoon generation
+const GEMINI_IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent';
 
 export interface CartoonResult {
   success: boolean;
