@@ -135,10 +135,14 @@ export function Quiz({ onClose }: QuizProps) {
     }
   };
 
-  // Handle timeout - counts as wrong answer
+  // Handle timeout - counts as wrong answer, fetches correct answer from API
   const handleTimeout = useCallback(async () => {
     if (!question || gameState !== 'playing') return;
 
+    // Immediately switch to feedback state to prevent race conditions
+    setGameState('feedback');
+    setFeedbackTimer(5);
+    setIsPaused(false);
     setTotalQuestions(prev => prev + 1);
     setStreak(0);
 
@@ -146,30 +150,51 @@ export function Quiz({ onClose }: QuizProps) {
       setLives(prev => prev - 1);
     }
 
-    // Create a timeout answer - find the correct bin from options
-    const correctOption = question.options.find(o => o.bin === question.options[0]?.bin);
+    // Set a temporary answer while API loads
     setAnswer({
       correct: false,
-      correctAnswer: correctOption?.bin || 'mixed',
+      correctAnswer: 'mixed',
       correctBinInfo: {
-        name_is: correctOption?.name || 'Blandaður úrgangur',
-        icon: correctOption?.icon || '🗑️',
-        color: correctOption?.color || '#6b7280'
+        name_is: 'Hleður...',
+        icon: '⏳',
+        color: '#6b7280'
       },
       item: question.item || 'Óþekktur hlutur',
       reason: 'Tíminn rann út!',
       points: 0,
     });
 
-    setGameState('feedback');
-    setFeedbackTimer(3); // Shorter feedback for timeout
-    setIsPaused(false);
+    // Fetch correct answer from API
+    try {
+      const result = await submitQuizAnswer(question.id, '__timeout__');
+      setAnswer({
+        ...result,
+        correct: false,
+        reason: 'Tíminn rann út! ' + (result.reason || ''),
+        points: 0,
+      });
+    } catch {
+      // Fallback if API fails — use first option as best guess
+      const firstOption = question.options[0];
+      setAnswer({
+        correct: false,
+        correctAnswer: firstOption?.bin || 'mixed',
+        correctBinInfo: {
+          name_is: firstOption?.name || 'Blandaður úrgangur',
+          icon: firstOption?.icon || '🗑️',
+          color: firstOption?.color || '#6b7280'
+        },
+        item: question.item || 'Óþekktur hlutur',
+        reason: 'Tíminn rann út!',
+        points: 0,
+      });
+    }
   }, [question, gameState, mode]);
 
   // Per-question timer (timed and survival modes)
   useEffect(() => {
-    // No timer in learning mode
-    if (mode === 'learning' || gameState !== 'playing' || questionTimeLeft <= 0) return;
+    // No timer in learning mode or when not playing
+    if (mode === 'learning' || gameState !== 'playing') return;
 
     const timer = setInterval(() => {
       setQuestionTimeLeft(prev => {
@@ -182,7 +207,7 @@ export function Quiz({ onClose }: QuizProps) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [mode, gameState, questionTimeLeft, handleTimeout]);
+  }, [mode, gameState, handleTimeout]);
 
   // Check for game over in survival mode
   useEffect(() => {

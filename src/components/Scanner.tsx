@@ -889,7 +889,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
                   if (navigator.share) {
                     try {
                       await navigator.share({
-                        title: 'Ruslaflokkun',
+                        title: 'Trasshy',
                         text: shareText,
                         url: 'https://rusl.myx.is'
                       });

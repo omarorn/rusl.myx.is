@@ -112,6 +112,11 @@ Verkefnalisti fyrir Íslensku ruslaflokkunarkerfið.
 
 ## 🟡 Næst (Up Next)
 
+### Villur úr Playwright prófunum (2026-02-28)
+- [x] 🔴 Quiz: Þegar tíminn rennur út — sýna rétt svar frá API (lagað: race condition fix + API kall á timeout)
+- [x] 🟡 Stats: 404 villa fyrir `/images/sponsors/graenir-skatar.png` (lagað: SVG data URI í D1 migration 0010)
+- [x] 🟢 Page title segir "Ruslaflokkun" í stað "Trasshy" (lagað: index.html, vite.config.ts, share titles)
+
 ### Yfirferð & gæði
 - [ ] Admin UI: skoða/afgreiða `review_flags` (listi + status: new/triaged/resolved)
 - [ ] Auka ikon coverage: keyra batch "generate missing icons" þar til nær 100%
@@ -149,4 +154,4 @@ npx wrangler d1 execute trash-myx-db --local --command "SELECT * FROM quiz_image
 
 ---
 
-Síðast uppfært: 2026-01-29
+Síðast uppfært: 2026-02-28

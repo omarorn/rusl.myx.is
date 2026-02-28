@@ -150,7 +150,7 @@ export function WelcomeIntro({ onComplete }: WelcomeIntroProps) {
                   onClick={() => {
                     const shareUrl = 'https://trash.myx.is/#/intro';
                     const shareData = {
-                      title: 'Ruslaflokkun - trash.myx.is',
+                      title: 'Trasshy - trash.myx.is',
                       text: 'Skannaðu rusl og lærðu rétta flokkun með gervigreind!',
                       url: shareUrl,
                     };

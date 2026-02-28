@@ -9,7 +9,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'trash.myx.is - Ruslaflokkun',
+        name: 'Trasshy - Ruslaflokkun',
         short_name: 'trash.myx.is',
         description: 'Greindu rusl með myndavélinni og finndu rétta tunnuna á Íslandi',
         theme_color: '#16a34a',
