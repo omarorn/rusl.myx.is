@@ -37,7 +37,7 @@ export async function generateJokeFromScans(
     const uniqueItems = [...new Set(recentScans.map(s => s.item))].slice(0, 5);
     const itemList = uniqueItems.join(', ');
 
-    const prompt = `Þú ert grínisti sem sérhæfir þig í ruslaflokkunar húmor á Íslandi.
+    const prompt = `Þú ert grínisti sem sérhæfir þig í ruslaflokkunarhúmor á Íslandi.
 
 Búðu til EINN stuttan og fyndinn brandara (pabba-brandara) á ÍSLENSKU um ruslaflokkun.
 Brandarinn ætti að tengjast einhverjum af þessum hlutum sem voru skannaðir nýlega: ${itemList}
@@ -46,7 +46,7 @@ Reglur:
 - Brandarinn verður að vera á íslensku
 - Hann á að vera fjölskylduvænn
 - Hann á að vera stuttur (1-3 setningar)
-- Hann ætti að innihalda ordskýringu eða fyndna innsýn um rusl/endurvinnslu
+- Hann ætti að innihalda orðleik eða fyndna innsýn um rusl/endurvinnslu
 
 Svaraðu AÐEINS með JSON:
 {

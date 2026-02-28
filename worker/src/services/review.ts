@@ -45,7 +45,7 @@ MIKILVÆGAR REGLUR:
 3. TetraPak (mjólkurfernur, safafernur) → paper
 4. Frauðplast (styrofoam) → recycling_center
 5. Fitublettur á pappa → mixed
-6. Matarleifar (banana, eplakjarna, brauð) → food
+6. Matarleifar (bananar, eplakjarnar, brauð) → food
 
 Skoðaðu myndina vandlega og staðfestu eða leiðréttu flokkun.
 

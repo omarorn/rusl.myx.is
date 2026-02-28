@@ -36,12 +36,12 @@ ads.get('/', async (c) => {
   const userHash = c.req.query('userHash');
 
   if (!placement) {
-    return c.json({ error: 'Placement er nauðsynlegur.' }, 400);
+    return c.json({ error: 'Staðsetning vantar.' }, 400);
   }
 
   const validPlacements: AdPlacement[] = ['result_banner', 'stats_card', 'quiz_reward', 'splash'];
   if (!validPlacements.includes(placement)) {
-    return c.json({ error: 'Ógilt placement.' }, 400);
+    return c.json({ error: 'Ógild staðsetning.' }, 400);
   }
 
   const context: AdContext = {};
@@ -66,7 +66,7 @@ ads.post('/click', async (c) => {
     const body = await c.req.json<{ impression_id: string; userHash?: string }>();
 
     if (!body.impression_id) {
-      return c.json({ error: 'Impression ID vantar.' }, 400);
+      return c.json({ error: 'Auglýsingakenni vantar.' }, 400);
     }
 
     const success = await recordClick(c.env, body.impression_id, body.userHash || 'anonymous');
@@ -157,7 +157,7 @@ ads.post('/admin/campaigns', async (c) => {
 
     // Validate required fields
     if (!body.sponsor_id || !body.name || !body.headline_is || !body.placement || !body.start_date || !body.end_date) {
-      return c.json({ error: 'Nauðsynlegir reitir vantar.' }, 400);
+      return c.json({ error: 'Nauðsynlega reiti vantar.' }, 400);
     }
 
     const campaignId = crypto.randomUUID();
@@ -211,7 +211,7 @@ ads.post('/admin/sponsors', async (c) => {
     }>();
 
     if (!body.name || !body.name_is || !body.logo_url || !body.website_url || !body.category) {
-      return c.json({ error: 'Nauðsynlegir reitir vantar.' }, 400);
+      return c.json({ error: 'Nauðsynlega reiti vantar.' }, 400);
     }
 
     const sponsorId = `sponsor_${crypto.randomUUID().slice(0, 8)}`;

@@ -70,7 +70,7 @@ export const translations = {
   'stats.streak': { is: 'Rás', en: 'Streak' },
   'stats.best_streak': { is: 'Besta rás', en: 'Best Streak' },
   'stats.global': { is: 'Heildaryfirlit', en: 'Global Stats' },
-  'stats.total_scans': { is: 'Heildar skannanir', en: 'Total Scans' },
+  'stats.total_scans': { is: 'Heildarskannanir', en: 'Total Scans' },
   'stats.total_users': { is: 'Notendur', en: 'Users' },
   'stats.recent': { is: 'Nýleg dæmi', en: 'Recent Examples' },
 

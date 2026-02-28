@@ -258,13 +258,13 @@ export function FunFacts({ onClose }: FunFactsProps) {
               {selectedFact.icon_key && (
                 <div className="p-3 bg-gray-800 border-t border-gray-700 flex items-center justify-between">
                   <div className="text-sm text-gray-300">
-                    {showOriginal ? 'Upprunaleg mynd' : 'Ikon'}
+                    {showOriginal ? 'Upprunaleg mynd' : 'Íkon'}
                   </div>
                   <button
                     onClick={() => setShowOriginal((v) => !v)}
                     className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-sm"
                   >
-                    {showOriginal ? 'Sýna ikon' : 'Sýna upprunalegu mynd'}
+                    {showOriginal ? 'Sýna íkon' : 'Sýna upprunalegu mynd'}
                   </button>
                 </div>
               )}

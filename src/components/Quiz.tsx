@@ -519,7 +519,7 @@ export function Quiz({ onClose }: QuizProps) {
           {/* Share button */}
           <button
             onClick={async () => {
-              const shareText = `Ég fékk ${score} stig í Ruslaleik!`;
+              const shareText = `Ég fékk ${score} stig í Ruslaleiknum!`;
               if (navigator.share) {
                 try {
                   await navigator.share({

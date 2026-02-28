@@ -27,7 +27,7 @@ const BINS = [
     name: 'Blandaður úrgangur',
     icon: '🗑️',
     color: '#6b7280',
-    items: '3D plast, bioplast, mengaður pappír',
+    items: '3D-plast, lífplast, mengaður pappír',
   },
   {
     name: 'Endurvinnslustöð',

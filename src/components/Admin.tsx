@@ -290,11 +290,11 @@ export function Admin({ onClose }: AdminProps) {
 
           {/* Icon generation section */}
           <div className="mt-6">
-            <h3 className="text-lg font-bold mb-3">🎨 Íkon búnaður</h3>
+            <h3 className="text-lg font-bold mb-3">🎨 Íkonabúnaður</h3>
             <div className="bg-gray-800 rounded-lg p-4">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <span className="text-gray-400">Myndir án íkona: </span>
+                  <span className="text-gray-400">Myndir án íkons:</span>
                   <span className={missingIconsCount === 0 ? 'text-green-400' : 'text-yellow-400'}>
                     {missingIconsCount ?? '...'}
                   </span>
@@ -540,10 +540,10 @@ export function Admin({ onClose }: AdminProps) {
               </span>
               <span className="text-gray-400">{Math.round(lightboxImage.confidence * 100)}%</span>
               {lightboxImage.icon_key && (
-                <span className="text-green-400 text-sm">✓ Ikon til</span>
+                <span className="text-green-400 text-sm">✓ Íkon til</span>
               )}
               {!lightboxImage.icon_key && (
-                <span className="text-yellow-400 text-sm">⚠ Vantar ikon</span>
+                <span className="text-yellow-400 text-sm">⚠ Vantar íkon</span>
               )}
             </div>
             <p className="text-sm text-gray-400 mt-2 max-w-md">{lightboxImage.reason}</p>

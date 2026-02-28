@@ -130,7 +130,7 @@ quiz.get('/image/*', async (c) => {
   <rect width="512" height="512" rx="64" fill="url(#g)"/>
   <circle cx="256" cy="210" r="96" fill="rgba(255,255,255,0.25)"/>
   <text x="256" y="340" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, Arial" font-size="28" font-weight="700" fill="#fff">
-    Fun fact
+    Fróðleikur
   </text>
   <text x="256" y="382" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, Arial" font-size="18" fill="rgba(255,255,255,0.9)">
     ${label}
@@ -232,7 +232,7 @@ quiz.post('/answer', async (c) => {
     }>();
 
     if (!questionId || !answer) {
-      return c.json({ error: 'Vantar questionId eða answer' }, 400);
+      return c.json({ error: 'Vantar questionId eða svar' }, 400);
     }
 
     // Get the correct answer

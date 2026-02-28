@@ -86,9 +86,9 @@ export const REGIONS: Record<string, RegionInfo> = {
         icon: '🧴',
         description_is: 'Græn tunna - Plastflöskur, pokar, dósir, álpappír',
         examples_is: [
-          'Plastflöskur og íláta',
+          'Plastflöskur og ílát',
           'Plastpokar og filmur',
-          'Snyrtivöruíláta (sjampó, o.fl.)',
+          'Snyrtivöruílát (sjampó o.fl.)',
           'Niðursuðudósir',
           'Bjórdósir og gosdósir',
           'Álpappír og álbakkar',
@@ -124,7 +124,7 @@ export const REGIONS: Record<string, RegionInfo> = {
           'Garðaúrgangur',
           'Dýraúrgangur (kattasandur, o.fl.)',
           'Olía og fita í vökvafara',
-          'Stórir beinar',
+          'Stór bein',
         ],
       },
       mixed: {

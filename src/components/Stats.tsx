@@ -17,7 +17,7 @@ interface StatsProps {
 const periodLabels: Record<LeaderboardPeriod, string> = {
   week: 'Vika',
   month: 'Mánuður',
-  all: 'Alltíð',
+  all: 'Frá upphafi',
 };
 
 export function Stats({ onClose }: StatsProps) {

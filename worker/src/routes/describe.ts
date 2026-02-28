@@ -131,7 +131,7 @@ describe.post('/tts', async (c) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Gemini TTS error:', errorText);
-      return c.json({ error: 'Villa við talgervil' }, 500);
+      return c.json({ error: 'Villa við talgervi' }, 500);
     }
 
     const result = await response.json() as {
@@ -162,7 +162,7 @@ describe.post('/tts', async (c) => {
     });
   } catch (err) {
     console.error('TTS error:', err);
-    return c.json({ error: 'Villa við talgervil' }, 500);
+    return c.json({ error: 'Villa við talgervi' }, 500);
   }
 });
 

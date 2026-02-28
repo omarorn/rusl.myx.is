@@ -19,7 +19,7 @@ trips.post('/', async (c) => {
   ).bind(body.userHash, 'loading').first();
 
   if (existing) {
-    return c.json({ error: 'Ferð í vinnslu þegar til', tripId: existing.id }, 409);
+    return c.json({ error: 'Ferð er þegar í vinnslu', tripId: existing.id }, 409);
   }
 
   // Create new trip

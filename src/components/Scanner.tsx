@@ -29,9 +29,9 @@ interface HistoryEntry {
 // Nano banana for scale - the ultimate size reference
 const NANO_BANANA = '🍌';
 const BANANA_COMMENTS = [
-  'Banani fyrir stærðarsamanburð',
-  'Staðlað mælibanani',
-  'Alþjóðlegt bananamælikerfi',
+  'Banani til stærðarsamanburðar',
+  'Staðlaður mælibanani',
+  'Alþjóðlega bananamælikerfið',
   'Banani til viðmiðunar',
 ];
 
@@ -371,7 +371,7 @@ export function Scanner({ onOpenQuiz, onOpenLive, onOpenStats, onOpenSettings, o
 
     // Check if image is too small (likely black/empty) - only for camera captures
     if (!providedImage && image.length < 5000) {
-      addLog('Mynd of lítil - bíddu eftir myndavél', '⚠️', 'error');
+      addLog('Mynd of lítil - bíddu eftir myndavélinni', '⚠️', 'error');
       return;
     }
 

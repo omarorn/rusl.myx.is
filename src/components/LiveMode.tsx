@@ -150,10 +150,10 @@ export function LiveMode({ onClose }: LiveModeProps) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-      addLog('system', 'Sjálfvirk greining stoppaður');
+      addLog('system', 'Sjálfvirk greining stoppuð');
     } else {
       setAutoMode(true);
-      addLog('system', 'Sjálfvirk greining byrjuð (á 4 sek fresti)');
+      addLog('system', 'Sjálfvirk greining hafin (á 4 sek. fresti)');
       captureAndDescribe();
       intervalRef.current = window.setInterval(captureAndDescribe, 4000);
     }

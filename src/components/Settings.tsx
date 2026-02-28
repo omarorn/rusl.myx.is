@@ -128,7 +128,7 @@ export function Settings({ onClose, onOpenAdmin }: SettingsProps) {
           </div>
           <p className="text-sm text-gray-500 mt-3">
             {language === 'is'
-              ? 'Hversu lengi hefur þú til að svara hverri spurningu í quiz'
+              ? 'Hversu lengi hefur þú til að svara hverri spurningu í spurningaleiknum'
               : 'How long you have to answer each quiz question'}
           </p>
         </div>

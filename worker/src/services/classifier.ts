@@ -91,7 +91,7 @@ export async function classifyItem(
         item: geminiResult.item,
         bin: 'mixed' as BinType, // Not actually for disposal!
         binInfo: { name_is: '🐱 Ekki rusl!', color: '#ec4899', icon: '😻' },
-        reason: `Þetta er köttur! Kettir eru ekki rusl - þeir eru yndislegir félagar. Ef þú finnur villiköttinn, hafðu samband við Kattholt (kattholt.is) eða næsta dýrahjálp. 🐈💕`,
+        reason: `Þetta er köttur! Kettir eru ekki rusl - þeir eru yndislegir félagar. Ef þú finnur villikött, hafðu samband við Kattholt (kattholt.is) eða næsta dýrahjálp. 🐈💕`,
         confidence: geminiResult.confidence,
         source: 'gemini',
         dadJoke: 'Af hverju sitja kettir aldrei við tölvuna? Þeir eru hræddir við músina! 🐭',
