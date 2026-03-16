@@ -39,7 +39,6 @@ export async function classifyWithCloudflareAI(
   ai: Ai
 ): Promise<CloudflareAIResponse | null> {
   try {
-    // Ensure we have a proper data URL
     let imageUrl = imageBase64;
     if (!imageBase64.startsWith('data:')) {
       imageUrl = `data:image/jpeg;base64,${imageBase64}`;
@@ -47,25 +46,23 @@ export async function classifyWithCloudflareAI(
 
     console.log('[CF-AI] Calling Llama 3.2 Vision, image size:', Math.round(imageUrl.length / 1024), 'KB');
 
-    // Using Llava 1.5 with image input
-    // Convert base64 to array
-    const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, '');
-    const binaryString = atob(base64Data);
-    const imageBytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      imageBytes[i] = binaryString.charCodeAt(i);
-    }
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response = await (ai as any).run('@cf/llava-hf/llava-1.5-7b-hf', {
-      prompt: SYSTEM_PROMPT,
-      image: Array.from(imageBytes),
+    const response = await (ai as any).run('@cf/meta/llama-3.2-11b-vision-instruct', {
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: SYSTEM_PROMPT },
+            { type: 'image_url', image_url: { url: imageUrl } },
+          ],
+        },
+      ],
       max_tokens: 256,
+      temperature: 0.1,
     });
 
     console.log('[CF-AI] Raw response:', JSON.stringify(response).substring(0, 500));
 
-    // Extract the response text
     const text = (response as { response?: string })?.response;
     if (!text) {
       console.error('[CF-AI] No response text from Cloudflare AI');
@@ -74,8 +71,7 @@ export async function classifyWithCloudflareAI(
 
     console.log('[CF-AI] Response text:', text.substring(0, 300));
 
-    // Parse JSON from response (might have extra text around it)
-    const jsonMatch = text.match(/\{[\s\S]*?\}/);
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error('[CF-AI] No JSON found in response:', text);
       return null;

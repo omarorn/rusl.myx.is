@@ -60,9 +60,15 @@ export async function classifyItem(
   console.log('[Classifier] Starting classification, image size:', Math.round(imageBase64.length / 1024), 'KB');
   console.log('[Classifier] Language:', language, 'Region:', region);
 
+  const quotaNotice = language === 'en'
+    ? 'AI quota is exhausted right now. Please try again later.'
+    : 'AI-kvótinn er uppurinn. Reyndu aftur síðar.';
+
   // Try Gemini first, fallback to Cloudflare AI
-  let geminiResult = await classifyWithGemini(imageBase64, env.GEMINI_API_KEY);
+  const geminiCall = await classifyWithGemini(imageBase64, env.GEMINI_API_KEY);
+  let geminiResult = geminiCall.result;
   console.log('[Classifier] Gemini result:', geminiResult ? `${geminiResult.item} (${geminiResult.confidence})` : 'null');
+  console.log('[Classifier] Gemini failure code:', geminiCall.failureCode || 'none');
 
   // Fallback to Cloudflare AI if Gemini fails
   let usedCloudflareAI = false;
@@ -118,6 +124,7 @@ export async function classifyItem(
       reason: geminiResult.reason,
       confidence: geminiResult.confidence,
       source: usedCloudflareAI ? 'cloudflare-ai' : 'gemini',
+      serviceNotice: geminiCall.failureCode === 'quota_exhausted' && usedCloudflareAI ? quotaNotice : undefined,
       dadJoke: geminiResult.fun_fact,
       isWideShot: geminiResult.is_wide_shot,
       allObjects: geminiResult.all_objects,
@@ -128,9 +135,13 @@ export async function classifyItem(
   // If classification fails, return safe default with helpful message
   console.error('[Classifier] Classification failed, returning default');
 
-  const unknownReason = language === 'en'
-    ? 'Could not identify the item. The AI service may be temporarily unavailable. When in doubt, put it in mixed waste.'
-    : 'Gat ekki greint hlutinn. AI þjónustan er ef til vill ekki tiltæk. Ef þú ert í vafa, settu í blandaðan úrgang.';
+  const unknownReason = geminiCall.failureCode === 'quota_exhausted'
+    ? (language === 'en'
+      ? 'AI quota is exhausted right now, so the scan could not be completed. Please try again later. When in doubt, put it in mixed waste.'
+      : 'AI-kvótinn er uppurinn. Reyndu aftur síðar. Ef þú ert í vafa, settu hlutinn í blandaðan úrgang.')
+    : (language === 'en'
+      ? 'Could not identify the item. The AI service may be temporarily unavailable. When in doubt, put it in mixed waste.'
+      : 'Gat ekki greint hlutinn. AI þjónustan er ef til vill ekki tiltæk. Ef þú ert í vafa, settu í blandaðan úrgang.');
 
   return {
     item: language === 'en' ? 'Unknown item' : 'Óþekkt hlutur',
@@ -139,5 +150,6 @@ export async function classifyItem(
     reason: unknownReason,
     confidence: 0,
     source: 'gemini',
+    serviceNotice: geminiCall.failureCode === 'quota_exhausted' ? quotaNotice : undefined,
   };
 }

@@ -362,6 +362,7 @@ identify.post('/', async (c) => {
       confidence,
       points,
       streak: stats.current_streak,
+      serviceNotice: result.serviceNotice,
       funFact: funFact || undefined,
       dadJoke: result.dadJoke || undefined,
       imageKey: imageKey || undefined,

@@ -1,10 +1,19 @@
 import type { GeminiResponse, BinType, DetectedObject } from '../types';
 
-// Using Gemini 3.1 Pro Preview for accurate waste classification
+// Use the newest preview models available for multimodal classification and image generation.
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent';
+const GEMINI_IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent';
 
-// Gemini 3 Pro Image Preview for icon generation (specialized image model)
-const GEMINI_IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent';
+export type GeminiFailureCode =
+  | 'quota_exhausted'
+  | 'auth_error'
+  | 'invalid_response'
+  | 'api_error';
+
+export interface GeminiClassificationResult {
+  result: GeminiResponse | null;
+  failureCode?: GeminiFailureCode;
+}
 
 const SYSTEM_PROMPT = `Þú ert sérfræðingur í ruslaflokkun á Íslandi (SORPA svæðið).
 Þú hefur dökkan húmor og elskar pabba-brandara.
@@ -91,7 +100,7 @@ Svaraðu AÐEINS með JSON:
 export async function classifyWithGemini(
   imageBase64: string,
   apiKey: string
-): Promise<GeminiResponse | null> {
+): Promise<GeminiClassificationResult> {
   try {
     // Remove data URL prefix if present
     const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
@@ -107,12 +116,12 @@ export async function classifyWithGemini(
     if (imageSizeKB < 1) {
       console.error('[Gemini] Image too small or empty:', imageSizeKB, 'KB');
       console.error('[Gemini] First 100 chars of input:', imageBase64.substring(0, 100));
-      return null;
+      return { result: null, failureCode: 'invalid_response' };
     }
 
     if (!apiKey) {
       console.error('[Gemini] No API key provided');
-      return null;
+      return { result: null, failureCode: 'auth_error' };
     }
 
     // Validate base64 data
@@ -122,7 +131,7 @@ export async function classifyWithGemini(
       console.log('[Gemini] Base64 validation passed');
     } catch (e) {
       console.error('[Gemini] Invalid base64 data:', e);
-      return null;
+      return { result: null, failureCode: 'invalid_response' };
     }
 
     const requestBody = {
@@ -160,11 +169,13 @@ export async function classifyWithGemini(
       // Check for specific error codes
       if (response.status === 429) {
         console.error('[Gemini] QUOTA EXHAUSTED - API key has hit rate limit');
+        return { result: null, failureCode: 'quota_exhausted' };
       } else if (response.status === 401 || response.status === 403) {
         console.error('[Gemini] AUTHENTICATION ERROR - API key may be invalid');
+        return { result: null, failureCode: 'auth_error' };
       }
 
-      return null;
+      return { result: null, failureCode: 'api_error' };
     }
 
     const data = await response.json() as {
@@ -180,7 +191,7 @@ export async function classifyWithGemini(
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
       console.error('[Gemini] No text in response');
-      return null;
+      return { result: null, failureCode: 'invalid_response' };
     }
 
     console.log('[Gemini] Response text:', text.substring(0, 300));
@@ -196,7 +207,7 @@ export async function classifyWithGemini(
 
     if (!parsed || !parsed.item) {
       console.error('[Gemini] Invalid parsed response:', jsonData);
-      return null;
+      return { result: null, failureCode: 'invalid_response' };
     }
 
     console.log('[Gemini] Parsed result:', parsed.item, '→', parsed.bin, 'conf:', parsed.confidence);
@@ -225,10 +236,10 @@ export async function classifyWithGemini(
       }
     }
 
-    return parsed;
+    return { result: parsed };
   } catch (error) {
     console.error('[Gemini] Classification error:', error);
-    return null;
+    return { result: null, failureCode: 'api_error' };
   }
 }
 

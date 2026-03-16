@@ -1,7 +1,7 @@
 import type { Env, GeminiResponse, BinType } from '../types';
 import { checkOverrides, getReasonText, BIN_INFO } from './iceland-rules';
 
-// Use Gemini 3.1 Pro Preview for review (best reasoning for critical validation)
+// Use the newest reasoning preview model for review jobs.
 const GEMINI_PRO_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent';
 
 // Claude API for deep thinking

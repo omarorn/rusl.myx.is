@@ -54,6 +54,7 @@ export interface ClassificationResult {
   reason: string;
   confidence: number;
   source: 'huggingface' | 'gemini' | 'cloudflare-ai';
+  serviceNotice?: string;
   dadJoke?: string;  // AI-generated dad joke
   // Multi-object detection for wide shots
   isWideShot?: boolean;
@@ -95,6 +96,7 @@ export interface IdentifyResponse {
   confidence: number;
   points: number;
   streak: number;
+  serviceNotice?: string;
   funFact?: string;    // Random fun fact from DB
   dadJoke?: string;    // AI-generated dad joke
   imageKey?: string;
